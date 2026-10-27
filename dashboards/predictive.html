@@ -486,7 +486,8 @@ renderKPIs(scenarioKPIs);
 
   let dayProfile;
   function buildDayProfile(day="Thu"){
-    const ctx=$("dayProfile").getContext("2d");if(dayProfile)dayProfile.destroy();
+    const el=$("dayProfile");if(!el)return; // no day-profile canvas on this page: skip instead of throwing (the throw disabled the Reset button)
+    const ctx=el.getContext("2d");if(dayProfile)dayProfile.destroy();
     const levels=HEAT[day].map(l=>LEVEL_META[l].score);
     dayProfile=new Chart(ctx,{type:"line",data:{labels:SLOTS.map(s=>`${s}:00`),datasets:[{label:`${day} risk profile`,data:levels,borderColor:"rgba(124,92,255,.95)",backgroundColor:"rgba(124,92,255,.14)",pointRadius:3,pointHoverRadius:5,borderWidth:2,tension:.35,fill:true}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:"rgba(255,255,255,.07)"},ticks:{font:{weight:"800"}}},y:{beginAtZero:true,max:100,grid:{color:"rgba(255,255,255,.07)"},ticks:{font:{weight:"800"}}}}}});

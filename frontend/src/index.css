@@ -1,0 +1,362 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══ Tokens — the dashboards' palette (dashboards/*.html :root), plus the chat UI's
+   token set from the Roads RAM UI re-skinned to it. Change the skin here. ═══ */
+:root {
+  --bg0: #070A12;
+  --bg1: #0B1020;
+  --stroke: rgba(255,255,255,.12);
+  --shadow: 0 20px 60px rgba(0,0,0,.55);
+  --radius: 16px;
+
+  --accent: #7c5cff;
+  --accent-hi: #a08cff;
+  --accent-lo: #5b3fe0;
+  --accent-grad: linear-gradient(135deg, #a08cff, #7c5cff, #5b3fe0);
+
+  --text: rgba(255,255,255,.92);
+  --text-md: rgba(255,255,255,.80);
+  --text-dim: rgba(255,255,255,.60);
+  --text-faint: rgba(255,255,255,.42);
+  --muted: rgba(255,255,255,.65);
+
+  --green: #2ecc71;
+  --red: #ff4757;
+  --red-bg: rgba(255,71,87,.12);
+  --amber: #f39c12;
+
+  --glass: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+  --glass-strong: rgba(10,14,28,.62);
+  --hairline: rgba(255,255,255,.10);
+  --glass-border: rgba(255,255,255,.12);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #root { width: 100%; height: 100%; }
+
+body {
+  font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  color: var(--text);
+  /* Same backdrop as the dashboards so the iframes blend in */
+  background:
+    radial-gradient(1200px 600px at 15% 10%, rgba(124,92,255,.22), transparent 60%),
+    radial-gradient(900px 600px at 85% 20%, rgba(46,204,113,.12), transparent 55%),
+    radial-gradient(900px 700px at 30% 85%, rgba(255,71,87,.10), transparent 55%),
+    linear-gradient(180deg, var(--bg0), var(--bg1));
+  background-attachment: fixed;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══ App shell ═══ */
+.app-shell {
+  width: 100vw; height: 100vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.workspace {
+  flex: 1; min-height: 0;
+  display: flex; gap: 12px;
+  padding: 12px;
+  position: relative;
+}
+
+/* ═══ Navigation bar — the dashboards' .header recipe ═══ */
+.nav {
+  position: relative; z-index: 5;
+  flex: 0 0 auto;
+  margin: 12px 12px 0;
+  padding: 8px 14px;
+  display: flex; align-items: center; gap: 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--stroke);
+  background: var(--glass);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.nav-brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 0 0 auto; }
+.nav-icon {
+  width: 36px; height: 36px; border-radius: 12px;
+  display: grid; place-items: center; font-size: 17px;
+  background: rgba(124,92,255,.18);
+  border: 1px solid rgba(124,92,255,.30);
+}
+.nav-title { font-size: 14px; font-weight: 800; letter-spacing: .2px; line-height: 1.15; white-space: nowrap; }
+.nav-sub { font-size: 11px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+
+.nav-tabs {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.nav-tabs::-webkit-scrollbar { display: none; }
+.nav-tab {
+  position: relative;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit; font-size: 13px; font-weight: 600; letter-spacing: .1px;
+  white-space: nowrap; cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s, transform .15s;
+}
+.nav-tab:hover { color: var(--text); background: rgba(255,255,255,.06); transform: translateY(-1px); }
+.nav-tab.active {
+  color: #fff;
+  background: rgba(124,92,255,.16);
+  border-color: rgba(124,92,255,.38);
+  box-shadow: 0 6px 18px rgba(124,92,255,.18);
+}
+.nav-tab.active::after {
+  content: '';
+  position: absolute; left: 14px; right: 14px; bottom: 3px;
+  height: 2px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-hi), var(--accent));
+  box-shadow: 0 0 10px rgba(124,92,255,.7);
+}
+
+.nav-right { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.assistant-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.22);
+  color: var(--text);
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: all .15s;
+}
+.assistant-btn:hover { border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.18); transform: translateY(-1px); }
+.assistant-btn.on {
+  background: var(--accent-grad); border-color: transparent; color: #fff;
+  box-shadow: 0 6px 18px rgba(124,92,255,.35);
+}
+
+/* ═══ Dashboard stage (iframes) ═══ */
+.frame-stage {
+  position: relative; flex: 1; min-width: 0; min-height: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--stroke);
+  background: rgba(0,0,0,.18);
+  box-shadow: var(--shadow);
+}
+.frame {
+  position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+  visibility: hidden; pointer-events: none;
+  background: transparent;
+}
+.frame.frame-active { visibility: visible; pointer-events: auto; }
+.frame-loading {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 999px;
+  background: var(--glass-strong); border: 1px solid var(--hairline);
+  backdrop-filter: blur(12px);
+  font-size: 11px; font-weight: 600; color: var(--text-dim);
+  pointer-events: none;
+}
+
+/* ═══ Chat panel ═══ */
+.chat-panel {
+  width: 430px; max-width: 100%;
+  flex: 0 0 auto;
+  display: flex; flex-direction: column;
+  min-height: 0;
+}
+@media (max-width: 1000px) {
+  .workspace { padding: 8px; gap: 8px; }
+  .chat-panel { position: absolute; top: 8px; right: 8px; bottom: 8px; width: calc(100% - 16px); z-index: 20; }
+  .nav { margin: 8px 8px 0; gap: 10px; }
+  .nav-sub { display: none; }
+  .assistant-btn span { display: none; }
+}
+
+/* ═══ Glass panels — the dashboards' .panel recipe ═══ */
+.glass-card {
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ═══ Panel titles ═══ */
+.panel-title {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--text);
+  text-transform: uppercase;
+  padding-left: 8px;
+  border-left: 2px solid var(--accent);
+  line-height: 1.25;
+}
+
+/* Status pill */
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px;
+  background: rgba(0,0,0,.25);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  font-size: 10px; font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+  max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+}
+
+.icon-btn {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-dim); background: transparent; border: none; cursor: pointer;
+  transition: all .15s;
+}
+.icon-btn:hover { background: rgba(124,92,255,.16); color: var(--text); }
+
+.popover {
+  background: rgba(14,18,34,.97);
+  border: 1px solid rgba(124,92,255,.35);
+  box-shadow: 0 14px 40px rgba(0,0,0,.6);
+  backdrop-filter: blur(20px);
+}
+
+/* History drawer (inside the chat panel) */
+.history-drawer {
+  position: absolute; inset: 0; z-index: 30;
+  display: flex; flex-direction: column;
+  background: rgba(9,12,24,.96);
+  backdrop-filter: blur(20px);
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,.03); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.28); }
+
+/* ═══ Chat bubbles — the RAM UI recipe, dark ═══ */
+.msg-bot-bubble {
+  background: var(--glass-strong);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--accent);
+  border-radius: 14px;
+  border-top-left-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.2), 0 6px 16px rgba(0,0,0,.25);
+}
+
+.msg-user-bubble {
+  background: linear-gradient(135deg, rgba(124,92,255,.22), rgba(124,92,255,.08));
+  border: 1px solid rgba(124,92,255,.30);
+  border-radius: 14px;
+  border-top-right-radius: 4px;
+}
+
+.stream-caret {
+  display: inline-block; width: 7px; height: 13px; margin-left: 3px; vertical-align: -2px;
+  background: var(--accent-hi); border-radius: 2px;
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Input bar */
+.input-bar {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.28);
+  backdrop-filter: blur(12px);
+  transition: border-color .15s, box-shadow .15s;
+}
+.input-bar:focus-within {
+  border-color: rgba(124,92,255,.65);
+  box-shadow: 0 0 0 3px rgba(124,92,255,.16);
+}
+.input-bar textarea { font-family: inherit; }
+.input-bar textarea::placeholder { color: var(--text-faint); }
+
+/* ═══ Suggestion chips — the dashboards' pill recipe ═══ */
+.suggestion-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 11px;
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  font-family: inherit; font-size: 11.5px; font-weight: 600;
+  color: var(--text-md);
+  cursor: pointer; transition: all 0.18s;
+  text-align: left;
+}
+.suggestion-chip:hover {
+  background: rgba(124,92,255,.22);
+  color: #fff;
+  border-color: rgba(124,92,255,.55);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(124,92,255,.25);
+}
+
+/* ═══ Tool-call trace ═══ */
+.trace-panel {
+  background: rgba(124,92,255,.06);
+  border: 1px solid rgba(124,92,255,.22);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.trace-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px;
+  background: rgba(124,92,255,.10);
+  border-bottom: 1px solid rgba(124,92,255,.14);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent-hi); cursor: pointer;
+}
+.trace-step {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(124,92,255,.10);
+  font-size: 11.5px;
+}
+.trace-step:last-child { border-bottom: none; }
+.trace-step-tool {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 10px; font-weight: 600;
+  color: var(--accent-hi);
+  background: rgba(124,92,255,.14);
+  padding: 1px 7px; border-radius: 4px;
+  white-space: nowrap;
+}
+.trace-io {
+  margin-top: 4px; padding: 4px 8px; border-radius: 6px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 10.5px;
+  color: var(--text-dim);
+  background: rgba(0,0,0,.25); border: 1px solid rgba(124,92,255,.12);
+  word-break: break-all;
+}
+
+/* ═══ Animations ═══ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeUp 0.45s ease both; }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slideUp 0.35s ease both; }
+
+@keyframes pop {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+  30% { transform: translateY(-7px); opacity: 1; }
+}
