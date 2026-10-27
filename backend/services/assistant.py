@@ -54,10 +54,12 @@ def status() -> dict:
 
 # ─── Prompt ──────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are the Crisis Management Assistant, embedded next to a suite of four emergency-response dashboards for Dubai (Unified Intelligence, Accident Review, Predictive Intelligence, Response Optimization). You help incident commanders, dispatchers and analysts read, interpret and act on what the dashboards show.
+SYSTEM_PROMPT = """You are the Crisis Management Assistant, built into a suite of four emergency-response dashboards for Dubai (Unified Intelligence, Accident Review, Predictive Intelligence, Response Optimization). You help incident commanders, dispatchers and analysts read, interpret and act on what the dashboards show.
+
+The app has five tabs in its navigation bar: the four dashboards and an "Assistant" tab where you have a full page. Every dashboard page also has a chat icon in its bottom-right corner that opens you in a small popup over the page.
 
 # What you know
-The complete content of all four dashboards is documented in the KNOWLEDGE BASE below — every KPI, table row, chart series, marker and recommendation. All of it is simulated demo data; treat it as the current state of the system and quote figures exactly as shown. Each user message also carries context: which dashboard the user is looking at right now and a plain-text snapshot of what is currently rendered on it (including any selection they have made, such as an incident clicked on the map). Prefer the on-screen snapshot for "what am I looking at / what is selected" questions, and the knowledge base for details the snapshot does not contain (chart data, hidden panels, other dashboards).
+The complete content of all four dashboards is documented in the KNOWLEDGE BASE below — every KPI, table row, chart series, marker and recommendation. All of it is simulated demo data; treat it as the current state of the system and quote figures exactly as shown. Each user message also carries context: whether the user is on a dashboard page or on the Assistant tab, which dashboard is in scope, and a plain-text snapshot of what that dashboard currently renders (including any selection they have made, such as an incident clicked on the map). Prefer the snapshot for "what am I looking at / what is selected" questions, and the knowledge base for details the snapshot does not contain (chart data, hidden panels, other dashboards). On the Assistant tab no dashboard is on screen, so don't say "you are looking at"; say which dashboard the figures come from instead.
 
 # How to answer
 - Be precise and specific: name the dashboard, the panel and the exact figure (with units and colour/status where it matters). Bold the key numbers.
@@ -103,24 +105,31 @@ def _clean_text(text: str, limit: int) -> str:
     return text[:limit] + (" …[truncated]" if len(text) > limit else "")
 
 
-def build_context_block(dashboard_id: str | None, snapshot: str | None) -> str:
+def build_context_block(dashboard_id: str | None, snapshot: str | None, view: str | None = None) -> str:
     d = get_dashboard(dashboard_id)
+    on_assistant_tab = view == "assistant"
     lines = ["<dashboard_context>"]
-    if d:
-        lines.append(f"Active dashboard: {d['label']} (id: {d['id']}) — \"{d['title']}\"")
+    if on_assistant_tab:
+        lines.append("Where the user is: the Assistant tab (full-page chat). No dashboard is on their screen right now.")
+        if d:
+            lines.append(f"Dashboard selected as context for this question: {d['label']} (id: {d['id']}) — \"{d['title']}\"")
+    elif d:
+        lines.append(f"Where the user is: the {d['label']} dashboard (id: {d['id']}) — \"{d['title']}\", with you open in the popup.")
     else:
-        lines.append("Active dashboard: unknown")
+        lines.append("Where the user is: unknown dashboard.")
     if snapshot and snapshot.strip():
-        lines.append("On-screen text snapshot (what the user currently sees, top to bottom):")
+        label = "Last rendered state of that dashboard" if on_assistant_tab else "On-screen text snapshot (what the user currently sees, top to bottom)"
+        lines.append(f"{label}:")
         lines.append(_clean_text(snapshot, MAX_SNAPSHOT_CHARS))
     else:
-        lines.append("On-screen snapshot: not available.")
+        lines.append("Snapshot of that dashboard: not available (it has not been opened in this session).")
     lines.append("</dashboard_context>")
     return "\n".join(lines)
 
 
 def build_messages(history: list[dict], question: str, *, dashboard_id: str | None,
-                   snapshot: str | None, attachments: list[dict] | None) -> list[dict]:
+                   snapshot: str | None, attachments: list[dict] | None,
+                   view: str | None = None) -> list[dict]:
     """Plain-text history + the current question wrapped with dashboard context."""
     messages: list[dict] = []
     for m in history:
@@ -136,7 +145,7 @@ def build_messages(history: list[dict], question: str, *, dashboard_id: str | No
     if messages and messages[0]["role"] != "user":
         messages.pop(0)
 
-    parts = [build_context_block(dashboard_id, snapshot)]
+    parts = [build_context_block(dashboard_id, snapshot, view)]
     for a in attachments or []:
         name = (a.get("name") or "attachment").strip()
         text = (a.get("text") or "")[:MAX_ATTACH_CHARS]
@@ -277,7 +286,8 @@ def _mock_target(question: str, current: str | None) -> dict | None:
     return None
 
 
-async def _answer_mock(question: str, dashboard_id: str | None, snapshot: str | None) -> AsyncIterator[dict]:
+async def _answer_mock(question: str, dashboard_id: str | None, snapshot: str | None,
+                       view: str | None = None) -> AsyncIterator[dict]:
     yield {"type": "start", "model": "mock"}
     d = get_dashboard(dashboard_id)
     target = _mock_target(question, dashboard_id)
@@ -292,7 +302,7 @@ async def _answer_mock(question: str, dashboard_id: str | None, snapshot: str | 
     answer = (
         f"**Mock mode** — no `ANTHROPIC_API_KEY` is configured, so this is a canned reply.\n\n"
         f"You asked: _{question.strip()}_\n\n"
-        + (f"You are now looking at the **{d['label']}** dashboard — {d['description']}\n\n" if d else "")
+        + (f"{'Context dashboard' if view == 'assistant' and not target else 'You are now looking at the'} **{d['label']}** dashboard — {d['description']}\n\n" if d else "")
         + (f"On-screen snapshot I would reason over:\n\n> {snap}\n\n" if snap else "")
         + "Set `ANTHROPIC_API_KEY` in the environment (and remove `ASSISTANT_MOCK`) to get real answers "
           "grounded in all four dashboards."
@@ -307,9 +317,10 @@ async def _answer_mock(question: str, dashboard_id: str | None, snapshot: str | 
 # ─── Entry point ────────────────────────────────────────────────────
 
 async def answer(*, history: list[dict], question: str, dashboard_id: str | None,
-                 snapshot: str | None, attachments: list[dict] | None) -> AsyncIterator[dict]:
+                 snapshot: str | None, attachments: list[dict] | None,
+                 view: str | None = None) -> AsyncIterator[dict]:
     if is_mock():
-        async for ev in _answer_mock(question, dashboard_id, snapshot):
+        async for ev in _answer_mock(question, dashboard_id, snapshot, view):
             yield ev
         return
     if not has_api_key():
@@ -317,6 +328,6 @@ async def answer(*, history: list[dict], question: str, dashboard_id: str | None
                                             "(or ASSISTANT_MOCK=true for a demo without the API)."}
         return
     messages = build_messages(history, question, dashboard_id=dashboard_id,
-                              snapshot=snapshot, attachments=attachments)
+                              snapshot=snapshot, attachments=attachments, view=view)
     async for ev in _answer_live(messages):
         yield ev

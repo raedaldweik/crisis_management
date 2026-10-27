@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { useChat } from '../context/ChatContext';
 
-/** "Recent conversations" drawer inside the chat panel: switch, rename, delete, create. */
-export default function ConversationList({ onClose }) {
+/**
+ * "Recent conversations": switch, rename, delete, create.
+ * variant="sidebar" renders as the Assistant page's left column; variant="drawer" as an
+ * overlay inside the floating widget (with a close button).
+ */
+export default function ConversationList({ variant = 'sidebar', onClose }) {
   const { chats, activeChatId, setActiveChatId, renameChat, deleteChat, createNewChat } = useChat();
   const [chatMenu, setChatMenu] = useState(null);
   const [renamingChat, setRenamingChat] = useState(null);
@@ -10,16 +14,19 @@ export default function ConversationList({ onClose }) {
 
   const startRename = (chat) => { setRenamingChat(chat.id); setRenameValue(chat.title); setChatMenu(null); };
   const finishRename = (id) => { if (renameValue.trim()) renameChat(id, renameValue.trim()); setRenamingChat(null); };
+  const isDrawer = variant === 'drawer';
 
   return (
-    <div className="history-drawer animate-fade-up">
-      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--hairline)' }}>
+    <div className={isDrawer ? 'history-drawer animate-fade-up' : 'flex flex-col h-full'}>
+      <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: '1px solid var(--hairline)' }}>
         <p className="panel-title">Recent conversations</p>
-        <button onClick={onClose} className="icon-btn" title="Close">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
+        {isDrawer && (
+          <button onClick={onClose} className="icon-btn" title="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -38,14 +45,14 @@ export default function ConversationList({ onClose }) {
                 </div>
               ) : (
                 <div className="flex items-center">
-                  <button onClick={() => { setActiveChatId(chat.id); onClose?.(); }}
-                    className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs text-left truncate transition-all"
+                  <button onClick={() => { setActiveChatId(chat.id); if (isDrawer) onClose?.(); }}
+                    className="flex-1 min-w-0 flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs text-left transition-all"
                     style={isActive
                       ? { color: '#fff', fontWeight: 600, background: 'rgba(124,92,255,0.16)', border: '1px solid rgba(124,92,255,0.35)', borderLeft: '3px solid var(--accent)' }
                       : { color: 'var(--text-md)', border: '1px solid transparent' }
                     }>
                     <span className="text-sm">💬</span>
-                    <span className="truncate flex-1">{chat.title}</span>
+                    <span className="truncate flex-1 chat-title">{chat.title}</span>
                   </button>
                   <button onClick={e => { e.stopPropagation(); setChatMenu(menuOpen ? null : chat.id); }}
                     className="icon-btn opacity-0 group-hover:opacity-100 shrink-0 ml-0.5" title="More">
@@ -77,7 +84,7 @@ export default function ConversationList({ onClose }) {
       </div>
 
       <div className="p-3" style={{ borderTop: '1px solid var(--hairline)' }}>
-        <button onClick={() => { createNewChat(); onClose?.(); }}
+        <button onClick={() => { createNewChat(); if (isDrawer) onClose?.(); }}
           className="w-full py-2.5 rounded-lg text-xs font-bold transition-all hover:bg-[rgba(124,92,255,0.12)]"
           style={{ border: '2px dashed rgba(124,92,255,0.45)', color: 'var(--accent-hi)', background: 'rgba(124,92,255,0.05)' }}>
           + New conversation

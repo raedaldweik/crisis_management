@@ -2,28 +2,25 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatProvider } from './context/ChatContext';
 import NavBar from './components/NavBar';
 import DashboardFrame from './components/DashboardFrame';
-import ChatPanel from './components/ChatPanel';
-import { DASHBOARDS, DEFAULT_DASHBOARD, dashboardById } from './dashboards';
+import ChatWidget from './components/ChatWidget';
+import ChatPage from './pages/ChatPage';
+import { NAV_TABS, ASSISTANT_TAB, DEFAULT_DASHBOARD, dashboardById, isTab } from './dashboards';
 import { getHealth } from './services/api';
 import { snapshotFrame } from './services/snapshot';
 
-const CHAT_KEY = 'cm_chat_open';
-
-// #/unified, #/accident, #/predictive, #/response — shareable, survives reload
+// #/unified, #/accident, #/predictive, #/response, #/assistant — shareable, survives reload
 const idFromHash = () => {
   const id = window.location.hash.replace(/^#\/?/, '').split(/[?/]/)[0];
-  return dashboardById(id) ? id : DEFAULT_DASHBOARD;
+  return isTab(id) ? id : DEFAULT_DASHBOARD;
 };
 
 export default function App() {
   const [active, setActive] = useState(idFromHash);
-  const [chatOpen, setChatOpen] = useState(() => {
-    try {
-      const saved = localStorage.getItem(CHAT_KEY);
-      if (saved != null) return saved === '1';
-    } catch { /* private mode */ }
-    return window.innerWidth >= 1100;
-  });
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  // The dashboard the assistant reasons about while the Assistant tab is open
+  const [lastDashboard, setLastDashboard] = useState(() => dashboardById(idFromHash()) ? idFromHash() : DEFAULT_DASHBOARD);
+  const [widgetOpen, setWidgetOpen] = useState(false);
   const [health, setHealth] = useState(null);
   const framesRef = useRef({});
 
@@ -34,41 +31,51 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    document.title = `${dashboardById(active)?.label || 'Dashboard'} · Crisis Management`;
+    if (dashboardById(active)) setLastDashboard(active);
+    const tab = NAV_TABS.find(t => t.id === active);
+    document.title = `${tab?.label || 'Dashboard'} · Crisis Management`;
     if (window.location.hash !== `#/${active}`) window.history.replaceState(null, '', `#/${active}`);
   }, [active]);
-
-  useEffect(() => {
-    try { localStorage.setItem(CHAT_KEY, chatOpen ? '1' : '0'); } catch { /* ignore */ }
-  }, [chatOpen]);
 
   useEffect(() => {
     getHealth().then(setHealth).catch(() => setHealth({ status: 'down' }));
   }, []);
 
   const navigate = useCallback((id) => {
-    if (dashboardById(id)) {
+    if (isTab(id)) {
       setActive(id);
       window.location.hash = `#/${id}`;
     }
   }, []);
 
-  const getSnapshot = useCallback(() => snapshotFrame(framesRef.current[active]), [active]);
+  // The assistant's open_dashboard tool: switch to the dashboard; if the user was on the
+  // Assistant tab, pop the widget open so the answer stays in view.
+  const assistantNavigate = useCallback((id) => {
+    if (!dashboardById(id)) return;
+    if (activeRef.current === ASSISTANT_TAB.id) setWidgetOpen(true);
+    navigate(id);
+  }, [navigate]);
+
+  const getSnapshot = useCallback((id) => snapshotFrame(framesRef.current[id]), []);
+
+  const onAssistantTab = active === ASSISTANT_TAB.id;
+  const shownDashboard = onAssistantTab ? lastDashboard : active;
 
   return (
-    <ChatProvider>
+    <ChatProvider onNavigate={assistantNavigate}>
       <div className="app-shell">
-        <NavBar active={active} onSelect={navigate} chatOpen={chatOpen} onToggleChat={() => setChatOpen(o => !o)} />
+        <NavBar active={active} onSelect={navigate} health={health} />
         <div className="workspace">
-          <DashboardFrame active={active} framesRef={framesRef} />
-          {chatOpen && (
-            <ChatPanel activeId={active} getSnapshot={getSnapshot} onNavigate={navigate}
-              onClose={() => setChatOpen(false)} health={health} />
+          <DashboardFrame active={shownDashboard} framesRef={framesRef} hidden={onAssistantTab} />
+          {onAssistantTab ? (
+            <ChatPage dashboardId={lastDashboard} getSnapshot={getSnapshot} health={health} />
+          ) : (
+            <ChatWidget open={widgetOpen} onOpen={() => setWidgetOpen(true)} onClose={() => setWidgetOpen(false)}
+              onExpand={() => { setWidgetOpen(false); navigate(ASSISTANT_TAB.id); }}
+              dashboardId={active} getSnapshot={getSnapshot} health={health} />
           )}
         </div>
       </div>
     </ChatProvider>
   );
 }
-
-export { DASHBOARDS };

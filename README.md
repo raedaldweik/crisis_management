@@ -10,24 +10,31 @@ show. The app is a single Docker image that deploys to Railway as-is.
 | Accident Review | `dashboards/accident.html` | Post-incident review of #67582749: timeline, responders, SLA-breach investigation |
 | Predictive Intelligence | `dashboards/predictive.html` | 24-hour forecast, early-warning alert, weekly high-risk heatmap, risk drivers |
 | Response Optimization | `dashboards/simulation.html` | Next-hour staffing needs, high-risk segments, unit repositioning, workforce status |
+| Assistant | `frontend/src/pages/ChatPage.jsx` | Full-page chat with the assistant (conversation history, dashboard-context dropdown) |
 
 The dashboards are untouched standalone HTML files. The React shell embeds them (same-origin
 iframes, kept alive across tab switches), adds the navigation bar, and hosts the assistant.
 
 ## The assistant
 
-The chat UI is the same one as the Roads RAM UI (glass panels, streamed markdown answers,
-typing indicator with live activity, tool-call trace, suggestion chips, voice input, document
-attachments, conversation history with rename/delete), re-skinned to the dashboards' dark
-palette. Behind it, a FastAPI backend calls Claude through the official `anthropic` SDK:
+Two ways in: the **Assistant** tab (a full page, same layout as the Roads RAM UI with the
+"Recent conversations" column) and a **chat icon at the bottom-right of every dashboard**
+that opens a compact popup over the page. Both share one conversation state, so an answer
+keeps streaming if you switch between them; the popup's expand button jumps to the tab.
+
+The chat UI is the Roads RAM one (glass panels, streamed markdown answers, typing indicator
+with live activity, tool-call trace, suggestion chips, voice input, document attachments,
+conversation history with rename/delete), re-skinned to the dashboards' dark palette.
+Behind it, a FastAPI backend calls Claude through the official `anthropic` SDK:
 
 - **Grounded in the dashboards.** `backend/knowledge/*.md` documents every KPI, table row,
   chart series, map marker and recommendation on the four pages, plus the threads that
   connect them (the same incident on two pages, the Rashidiya staffing gap, the Al Qusais
   hotspot…). It is sent as a cached system prompt, so follow-up turns are cheap.
-- **Sees what you see.** Each question carries a plain-text snapshot of the active
-  dashboard's iframe (KPIs, the incident you clicked on the map, dropdown values…), so
-  "what is selected right now?" works.
+- **Sees what you see.** From the popup, each question carries a plain-text snapshot of
+  the dashboard under it (KPIs, the incident you clicked on the map, dropdown values…), so
+  "what is selected right now?" works. On the Assistant tab you pick the dashboard a
+  question is about from a dropdown (default: the one you last viewed).
 - **Can navigate.** The model has one tool, `open_dashboard`, so "show me the forecast"
   switches tabs and then answers.
 - **Streams.** Answers arrive token by token over Server-Sent Events; Stop cancels.
@@ -45,7 +52,7 @@ assistant answers from those notes (plus the live snapshot), not by reading the 
 
 ```
 dashboards/        the four HTML dashboards + Accident_image.jpg (served at /dashboards/*)
-frontend/          React + Vite + Tailwind shell: NavBar, DashboardFrame (iframes), ChatPanel
+frontend/          React + Vite + Tailwind shell: NavBar, DashboardFrame (iframes), ChatWidget (popup), pages/ChatPage (Assistant tab)
 backend/           FastAPI: /api/chat (SSE), /api/health, /api/extract; serves dashboards + dist
   knowledge/       the dashboard knowledge base (markdown)
   services/assistant.py   Claude call: streaming, tool loop, caching, mock mode
@@ -110,6 +117,6 @@ Notes:
 |---|---|---|
 | `/api/health` | GET | assistant status (`ok` / `unconfigured`), mode (`live` / `mock`), model, dashboard list |
 | `/api/dashboards` | GET | the dashboard registry |
-| `/api/chat` | POST | `{messages, dashboard, snapshot, attachments}` → SSE stream of `{type: start\|text\|activity\|tool\|done\|error}` |
+| `/api/chat` | POST | `{messages, dashboard, snapshot, attachments, view}` → SSE stream of `{type: start\|text\|activity\|tool\|done\|error}` |
 | `/api/extract` | POST | multipart file → extracted text (PDF, DOCX, TXT, CSV, MD, JSON…) |
 | `/dashboards/*` | GET | the static dashboards |

@@ -15,6 +15,11 @@ and quote them exactly as shown.
 | 3 | `predictive` | Predictive Intelligence | Predictive Accident Forecasting & Intelligence | Next-24-hour accident forecast, early-warning alert, weekly high-risk hours heatmap, explainable risk drivers |
 | 4 | `response` | Response Optimization | Simulation for Incident Response Optimization | Next-hour staffing/vehicle needs, high-risk street segments, unit repositioning recommendations, workforce status |
 
+The navigation bar has a fifth tab, **Assistant**, which is a full-page chat with you (with a
+"Recent conversations" column and a dropdown to choose which dashboard a question is about).
+Every dashboard page also shows a round chat icon in the bottom-right corner that opens you in
+a popup over the page; the popup's expand button jumps to the Assistant tab.
+
 ## Shared conventions
 
 - **SLA for response time is 5 minutes** on every dashboard. "SLA breach" means units arrived

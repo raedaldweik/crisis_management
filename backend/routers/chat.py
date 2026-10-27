@@ -32,6 +32,7 @@ class ChatRequest(BaseModel):
     dashboard: str | None = None            # active dashboard id
     snapshot: str | None = None             # innerText of the active dashboard
     attachments: list[Attachment] | None = None
+    view: str | None = None                 # 'dashboard' (popup on a dashboard) or 'assistant' (the Assistant tab)
 
 
 @router.get("/health")
@@ -57,7 +58,7 @@ async def chat(body: ChatRequest):
         try:
             async for ev in assistant.answer(history=history, question=question,
                                              dashboard_id=body.dashboard, snapshot=body.snapshot,
-                                             attachments=attachments):
+                                             attachments=attachments, view=body.view):
                 yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
         except Exception as e:  # last-resort guard so the stream always terminates cleanly
             yield f"data: {json.dumps({'type': 'error', 'message': f'Assistant failure: {e}'})}\n\n"

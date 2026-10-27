@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { streamChat } from '../services/api';
 
 const ChatContext = createContext();
 
@@ -36,16 +37,32 @@ function load() {
   }
 }
 
-export function ChatProvider({ children }) {
-  const [state, setState] = useState(() => {
-    const saved = load();
-    if (saved) {
-      const active = saved.chats.some(c => c.id === saved.activeChatId) ? saved.activeChatId : saved.chats[0].id;
-      return { chats: saved.chats, activeChatId: active };
-    }
-    const c = freshChat();
-    return { chats: [c], activeChatId: c.id };
-  });
+function initialState() {
+  const saved = load();
+  if (saved) {
+    const active = saved.chats.some(c => c.id === saved.activeChatId) ? saved.activeChatId : saved.chats[0].id;
+    return { chats: saved.chats, activeChatId: active };
+  }
+  const c = freshChat();
+  return { chats: [c], activeChatId: c.id };
+}
+
+/**
+ * Conversation state + the streaming send loop, shared by the Assistant tab and the
+ * floating chat widget so a reply keeps streaming whichever view is open.
+ * `onNavigate(dashboardId)` is called when the assistant uses its open_dashboard tool.
+ */
+export function ChatProvider({ children, onNavigate }) {
+  const [state, setState] = useState(initialState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const navRef = useRef(onNavigate);
+  navRef.current = onNavigate;
+
+  const [loading, setLoading] = useState(false);
+  const [liveSteps, setLiveSteps] = useState([]);
+  const abortRef = useRef(null);
+
   const { chats, activeChatId } = state;
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
 
@@ -105,8 +122,86 @@ export function ChatProvider({ children }) {
     });
   }, []);
 
+  /**
+   * Ask the assistant. ctx = { dashboard, snapshot, attachments, view } — which dashboard
+   * the question is about, a text snapshot of it, optional [{name, text}], and whether the
+   * user is on a dashboard ('dashboard') or on the Assistant tab ('assistant').
+   */
+  const send = useCallback(async (question, ctx = {}) => {
+    const q = (question || '').trim();
+    if (!q || abortRef.current) return;
+    const chatId = stateRef.current.activeChatId;
+    const chat = stateRef.current.chats.find(c => c.id === chatId);
+    const history = (chat?.messages || [])
+      .filter(m => m.id !== 'welcome')
+      .map(m => ({ role: m.role, content: m.type === 'structured' ? (m.data?.answer || '') : (m.content || '') }))
+      .filter(m => m.content.trim());
+
+    const attachments = ctx.attachments && ctx.attachments.length ? ctx.attachments : null;
+    addMessage(chatId, { role: 'user', type: 'text', content: q, attachmentName: attachments?.[0]?.name });
+    const answerId = newId();
+    addMessage(chatId, {
+      id: answerId, role: 'assistant', type: 'structured', query: q,
+      data: { answer: '', toolCalls: [], streaming: true, dashboard: ctx.dashboard },
+    });
+    const patch = (fn) => updateMessage(chatId, answerId, m => ({ ...m, data: fn(m.data) }));
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoading(true);
+    setLiveSteps([]);
+    let finished = false;
+    try {
+      await streamChat({
+        messages: [...history, { role: 'user', content: q }],
+        dashboard: ctx.dashboard || null,
+        snapshot: ctx.snapshot || null,
+        attachments,
+        view: ctx.view || 'dashboard',
+      }, {
+        signal: controller.signal,
+        onEvent: (ev) => {
+          switch (ev.type) {
+            case 'start':
+              patch(d => ({ ...d, model: ev.model }));
+              break;
+            case 'text':
+              patch(d => ({ ...d, answer: d.answer + ev.delta }));
+              break;
+            case 'activity':
+              setLiveSteps(s => [...s, { key: `${ev.name}-${s.length}`, icon: '🛠', label: ev.name }]);
+              break;
+            case 'tool':
+              patch(d => ({ ...d, toolCalls: [...(d.toolCalls || []), { name: ev.name, input: ev.input, output: ev.result, isError: ev.isError }] }));
+              if (ev.name === 'open_dashboard' && ev.input?.dashboard && !ev.isError) navRef.current?.(ev.input.dashboard);
+              break;
+            case 'done':
+              finished = true;
+              patch(d => ({ ...d, streaming: false, usage: ev.usage, model: ev.model || d.model, stopReason: ev.stop_reason }));
+              break;
+            case 'error':
+              finished = true;
+              patch(d => ({ ...d, streaming: false, error: ev.message }));
+              break;
+            default:
+              break;
+          }
+        },
+      });
+      if (!finished) patch(d => ({ ...d, streaming: false, error: d.answer ? undefined : 'The stream ended without an answer.' }));
+    } catch (err) {
+      const aborted = err?.name === 'AbortError';
+      patch(d => ({ ...d, streaming: false, error: aborted ? (d.answer ? undefined : 'Stopped.') : `Error: ${err.message}` }));
+    }
+    abortRef.current = null;
+    setLoading(false);
+    setLiveSteps([]);
+  }, [addMessage, updateMessage]);
+
+  const stop = useCallback(() => abortRef.current?.abort(), []);
+
   return (
-    <ChatContext.Provider value={{ chats, activeChat, activeChatId, setActiveChatId, createNewChat, addMessage, updateMessage, renameChat, deleteChat }}>
+    <ChatContext.Provider value={{ chats, activeChat, activeChatId, setActiveChatId, createNewChat, renameChat, deleteChat, send, stop, loading, liveSteps }}>
       {children}
     </ChatContext.Provider>
   );

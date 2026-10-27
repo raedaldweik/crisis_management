@@ -124,20 +124,8 @@ body {
 }
 
 .nav-right { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-.assistant-btn {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 8px 14px; border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(0,0,0,.22);
-  color: var(--text);
-  font-family: inherit; font-size: 12px; font-weight: 700;
-  cursor: pointer; transition: all .15s;
-}
-.assistant-btn:hover { border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.18); transform: translateY(-1px); }
-.assistant-btn.on {
-  background: var(--accent-grad); border-color: transparent; color: #fff;
-  box-shadow: 0 6px 18px rgba(124,92,255,.35);
-}
+.nav-tab-assistant { display: inline-flex; align-items: center; gap: 7px; margin-left: 6px; }
+.nav-tab-assistant:not(.active) { color: var(--accent-hi); }
 
 /* ═══ Dashboard stage (iframes) ═══ */
 .frame-stage {
@@ -154,6 +142,7 @@ body {
   background: transparent;
 }
 .frame.frame-active { visibility: visible; pointer-events: auto; }
+.frame-stage-hidden { visibility: hidden; pointer-events: none; }
 .frame-loading {
   position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
   display: inline-flex; align-items: center; gap: 8px;
@@ -164,19 +153,59 @@ body {
   pointer-events: none;
 }
 
-/* ═══ Chat panel ═══ */
-.chat-panel {
-  width: 430px; max-width: 100%;
-  flex: 0 0 auto;
-  display: flex; flex-direction: column;
-  min-height: 0;
+/* ═══ Floating chat widget (every dashboard page) ═══ */
+.chat-launcher {
+  position: absolute; right: 26px; bottom: 26px; z-index: 30;
+  width: 54px; height: 54px; border-radius: 999px;
+  display: grid; place-items: center;
+  color: #fff; border: 1px solid rgba(255,255,255,.22);
+  background: var(--accent-grad);
+  box-shadow: 0 10px 30px rgba(124,92,255,.45), 0 2px 8px rgba(0,0,0,.4);
+  cursor: pointer; transition: transform .15s, box-shadow .15s;
 }
+.chat-launcher:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 14px 36px rgba(124,92,255,.55), 0 2px 8px rgba(0,0,0,.4); }
+.chat-launcher-dot {
+  position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; border-radius: 999px;
+  background: var(--green); border: 2px solid var(--bg1);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+@keyframes pulse-dot { 50% { transform: scale(1.35); opacity: .6; } }
+
+/* `.workspace >` beats .glass-card's position:relative, which is declared later */
+.workspace > .chat-popup {
+  position: absolute; right: 22px; bottom: 22px; z-index: 30;
+  width: 410px; max-width: calc(100% - 44px);
+  height: 620px; max-height: calc(100% - 44px);
+  display: flex; flex-direction: column;
+  background: linear-gradient(135deg, rgba(20,24,44,.96), rgba(12,16,32,.96));
+  box-shadow: 0 30px 80px rgba(0,0,0,.65), 0 0 0 1px rgba(124,92,255,.18);
+}
+
+/* ═══ Assistant tab — the Roads RAM chat page layout ═══ */
+.chat-page {
+  position: absolute; inset: 12px; z-index: 10;
+  display: flex; gap: 12px;
+}
+.chat-sidebar { width: 260px; flex: 0 0 auto; display: flex; flex-direction: column; min-height: 0; }
+.chat-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.chat-watermark {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px; height: 300px;
+  opacity: 0.045; pointer-events: none; z-index: 0;
+}
+.only-narrow { display: none; }
+
 @media (max-width: 1000px) {
-  .workspace { padding: 8px; gap: 8px; }
-  .chat-panel { position: absolute; top: 8px; right: 8px; bottom: 8px; width: calc(100% - 16px); z-index: 20; }
+  .workspace { padding: 8px; }
   .nav { margin: 8px 8px 0; gap: 10px; }
   .nav-sub { display: none; }
-  .assistant-btn span { display: none; }
+  .nav-right { display: none; }
+  .workspace > .chat-popup { right: 8px; bottom: 8px; left: 8px; width: auto; max-width: none; height: calc(100% - 16px); max-height: none; }
+  .chat-launcher { right: 16px; bottom: 16px; }
+  .chat-page { inset: 8px; }
+  .chat-sidebar { display: none; }
+  .only-narrow { display: inline-flex; }
 }
 
 /* ═══ Glass panels — the dashboards' .panel recipe ═══ */
