@@ -1,5 +1,6 @@
 # ─── Stage 1: Build the React shell ───────────────────────────────
-FROM node:20-alpine AS frontend-build
+# Node 22 LTS: Vite 8 needs Node ^20.19 or >=22.12, and Node 20 is end-of-life.
+FROM node:22-alpine AS frontend-build
 
 WORKDIR /app/frontend
 
