@@ -23,7 +23,7 @@ that opens a compact popup over the page. Both share one conversation state, so 
 keeps streaming if you switch between them; the popup's expand button jumps to the tab.
 
 The chat UI is the Roads RAM one (glass panels, streamed markdown answers, typing indicator
-with live activity, tool-call trace, suggestion chips, voice input, document attachments,
+with live activity, action chips for what it did, suggestion chips, voice input, document attachments,
 conversation history with rename/delete), re-skinned to the dashboards' dark palette.
 Behind it, a FastAPI backend calls Claude through the official `anthropic` SDK:
 

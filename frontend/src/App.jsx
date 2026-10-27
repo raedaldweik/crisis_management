@@ -64,7 +64,7 @@ export default function App() {
   return (
     <ChatProvider onNavigate={assistantNavigate}>
       <div className="app-shell">
-        <NavBar active={active} onSelect={navigate} health={health} />
+        <NavBar active={active} onSelect={navigate} />
         <div className="workspace">
           <DashboardFrame active={shownDashboard} framesRef={framesRef} hidden={onAssistantTab} />
           {onAssistantTab ? (

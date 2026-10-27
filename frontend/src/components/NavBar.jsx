@@ -1,8 +1,7 @@
 import { NAV_TABS, ASSISTANT_TAB } from '../dashboards';
-import { StatusPill } from './chat/AssistantMark';
 
 /** Top navigation: brand, the four dashboards in order, then the Assistant tab. */
-export default function NavBar({ active, onSelect, health }) {
+export default function NavBar({ active, onSelect }) {
   return (
     <header className="nav">
       <div className="nav-brand">
@@ -27,10 +26,6 @@ export default function NavBar({ active, onSelect, health }) {
           </button>
         ))}
       </nav>
-
-      <div className="nav-right">
-        <StatusPill health={health} />
-      </div>
     </header>
   );
 }

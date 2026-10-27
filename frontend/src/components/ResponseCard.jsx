@@ -1,6 +1,5 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import ToolCallTrace from './ToolCallTrace';
 import { dashboardById } from '../dashboards';
 
 const markdownComponents = {
@@ -64,13 +63,20 @@ export function Thinking({ steps = [] }) {
   );
 }
 
-/** Renders one assistant answer: streamed markdown, the tool-call trace, usage footer. */
+/** Human wording for a tool call the assistant made. */
+function actionLabel(call) {
+  if (call.name === 'open_dashboard') {
+    const d = dashboardById(call.input?.dashboard);
+    return call.isError ? 'Could not open that dashboard' : `Opened ${d ? d.label : 'a dashboard'}`;
+  }
+  return call.name;
+}
+
+/** Renders one assistant answer: streamed markdown plus the actions it took. */
 export default function ResponseCard({ data, liveSteps }) {
   if (!data) return null;
   const waiting = data.streaming && !data.answer && !data.error;
-  const usage = data.usage || {};
-  const hasUsage = (usage.input_tokens || 0) + (usage.output_tokens || 0) > 0;
-  const ctx = dashboardById(data.dashboard);
+  const actions = data.toolCalls || [];
 
   return (
     <div className="animate-slide-up space-y-2 max-w-full">
@@ -93,16 +99,16 @@ export default function ResponseCard({ data, liveSteps }) {
         )}
       </div>
 
-      <ToolCallTrace toolCalls={data.toolCalls} />
-
-      {!data.streaming && (ctx || hasUsage || data.model) && (
-        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 px-1 text-[10px]" style={{ color: 'var(--text-faint)' }}>
-          {ctx && <span>Context: {ctx.label}</span>}
-          {hasUsage && (
-            <span>{(usage.input_tokens || 0).toLocaleString()} in · {usage.output_tokens.toLocaleString()} out
-              {usage.cache_read_input_tokens ? ` · ${usage.cache_read_input_tokens.toLocaleString()} cached` : ''}</span>
-          )}
-          {data.model && data.model !== 'mock' && <span>{data.model}</span>}
+      {actions.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 px-0.5">
+          {actions.map((call, i) => (
+            <span key={i} className="action-chip">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
+              </svg>
+              {actionLabel(call)}
+            </span>
+          ))}
         </div>
       )}
     </div>

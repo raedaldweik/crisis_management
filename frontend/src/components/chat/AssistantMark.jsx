@@ -15,10 +15,10 @@ export default function AssistantMark({ size = 32 }) {
 /** What the connection pill shows for a /api/health result. */
 export function statusText(health) {
   if (health == null) return { label: 'Connecting…', color: 'var(--amber)', pulse: true };
-  if (health.status === 'down') return { label: 'Backend offline', color: 'var(--red)', pulse: true };
-  if (health.mode === 'mock') return { label: 'Mock mode', color: 'var(--amber)', pulse: false };
-  if (health.status === 'unconfigured') return { label: 'API key missing', color: 'var(--red)', pulse: true };
-  return { label: `Connected · ${health.model || 'Claude'}`, color: 'var(--green)', pulse: false };
+  if (health.status === 'down') return { label: 'Offline', color: 'var(--red)', pulse: true };
+  if (health.mode === 'mock') return { label: 'Demo mode', color: 'var(--amber)', pulse: false };
+  if (health.status === 'unconfigured') return { label: 'Not configured', color: 'var(--red)', pulse: true };
+  return { label: 'Online', color: 'var(--green)', pulse: false };
 }
 
 export function StatusPill({ health }) {

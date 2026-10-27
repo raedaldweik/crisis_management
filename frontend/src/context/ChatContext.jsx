@@ -169,7 +169,7 @@ export function ChatProvider({ children, onNavigate }) {
               patch(d => ({ ...d, answer: d.answer + ev.delta }));
               break;
             case 'activity':
-              setLiveSteps(s => [...s, { key: `${ev.name}-${s.length}`, icon: '🛠', label: ev.name }]);
+              setLiveSteps(s => [...s, { key: `${ev.name}-${s.length}`, icon: '↗', label: ev.name === 'open_dashboard' ? 'Opening a dashboard…' : 'Working…' }]);
               break;
             case 'tool':
               patch(d => ({ ...d, toolCalls: [...(d.toolCalls || []), { name: ev.name, input: ev.input, output: ev.result, isError: ev.isError }] }));
