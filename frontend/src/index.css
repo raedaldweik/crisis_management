@@ -143,6 +143,8 @@ body {
 }
 .frame.frame-active { visibility: visible; pointer-events: auto; }
 .frame-stage-hidden { visibility: hidden; pointer-events: none; }
+/* visibility is inherited but a child's `visible` would win — hide the active frame too */
+.frame-stage-hidden .frame.frame-active { visibility: hidden; pointer-events: none; }
 .frame-loading {
   position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
   display: inline-flex; align-items: center; gap: 8px;
