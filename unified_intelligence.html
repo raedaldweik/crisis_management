@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unified Operational Intelligence</title>
+
+  <!-- Mapbox -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg0:#070A12;
+      --bg1:#0B1020;
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.65);
+      --muted2: rgba(255,255,255,.45);
+      --good:#2ecc71;
+      --accent:#7c5cff;
+      --shadow: 0 20px 60px rgba(0,0,0,.55);
+      --radius: 16px;
+    }
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+    body{
+      margin:0;
+      font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 15% 10%, rgba(124,92,255,.22), transparent 60%),
+        radial-gradient(900px 600px at 85% 20%, rgba(46,204,113,.12), transparent 55%),
+        radial-gradient(900px 700px at 30% 85%, rgba(255,71,87,.10), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      color: var(--text);
+      overflow:hidden;
+    }
+
+    .app{
+      height:100%;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      padding:16px;
+    }
+
+    .header{
+      background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+      border:1px solid var(--stroke);
+      border-radius: var(--radius);
+      padding:16px 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .titleRow{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .title{
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing:.2px;
+      margin:0;
+      line-height:1.15;
+    }
+    .subtitle{
+      margin:4px 0 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight:500;
+    }
+
+    .kpis{
+      display:grid;
+      grid-template-columns: repeat(5, minmax(160px, 1fr));
+      gap:12px;
+    }
+
+    .kpi{
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: linear-gradient(135deg, rgba(255,255,255,.09), rgba(255,255,255,.03));
+      padding:12px 12px 10px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 35px rgba(0,0,0,.35);
+      position:relative;
+      overflow:hidden;
+      transition: transform .18s ease, border-color .18s ease;
+    }
+    .kpi:hover{
+      transform: translateY(-2px);
+      border-color: rgba(124,92,255,.35);
+    }
+    .kpi:before{
+      content:"";
+      position:absolute;
+      inset:-60px -40px auto auto;
+      width:140px; height:140px;
+      background: radial-gradient(circle at 30% 30%, rgba(124,92,255,.35), transparent 60%);
+      filter: blur(2px);
+      transform: rotate(18deg);
+      pointer-events:none;
+    }
+
+    .kpiLabel{
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing:.2px;
+      margin-bottom:8px;
+    }
+    .kpiValue{
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing:.2px;
+      display:flex;
+      align-items:baseline;
+      gap:8px;
+    }
+    .kpiUnit{
+      font-size: 12px;
+      color: var(--muted2);
+      font-weight:600;
+    }
+
+    .kpiBar{
+      margin-top:10px;
+      height:8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .kpiFill{
+      height:100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(124,92,255,.85), rgba(124,92,255,.25));
+    }
+
+    .content{
+      flex:1;
+      display:grid;
+      grid-template-columns: 1.6fr 420px;
+      gap:14px;
+      min-height:0;
+    }
+
+    .mapWrap{
+      position:relative;
+      border-radius: var(--radius);
+      overflow:hidden;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      box-shadow: var(--shadow);
+      min-height:0;
+    }
+
+    #map{ width:100%; height:100%; }
+
+    .mapBadge{
+      position:absolute;
+      top:14px; left:14px;
+      z-index:5;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius: 14px;
+      background: rgba(10,14,28,.58);
+      border:1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 35px rgba(0,0,0,.35);
+    }
+    .mapBadge .icon{
+      width:34px; height:34px;
+      border-radius: 12px;
+      display:grid;
+      place-items:center;
+      background: rgba(124,92,255,.18);
+      border:1px solid rgba(124,92,255,.25);
+    }
+    .mapBadge .t1{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight:600;
+      margin:0;
+      line-height:1.1;
+    }
+    .mapBadge .t2{
+      font-size: 13px;
+      font-weight:700;
+      margin:2px 0 0 0;
+      line-height:1.1;
+    }
+
+.action-buttons{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin-top:12px;
+}
+
+.action-btn{
+  padding:8px 16px;
+  border-radius:10px;
+  font-weight:700;
+  font-size:12px;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
+
+.take-action{ background:#2D8CFF; }
+.dismiss{ background:#7A7F87; }
+
+    /* Re-center button (hidden until dot click) */
+    .recenter-btn{
+      position:absolute;
+      top:18px;
+      right:18px;
+      z-index:6;
+
+      padding:10px 14px;
+      border-radius: 12px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing:.2px;
+
+      color: rgba(255,255,255,.95);
+      background: rgba(10,14,28,.65);
+      border:1px solid rgba(255,255,255,.18);
+
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,.45);
+
+      cursor:pointer;
+      transition: all .18s ease;
+
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(6px);
+    }
+    .recenter-btn.visible{
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    .recenter-btn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(124,92,255,.6);
+      background: rgba(124,92,255,.35);
+    }
+    .recenter-btn:active{
+      transform: translateY(0);
+    }
+
+    .panel{
+      border-radius: var(--radius);
+      border:1px solid var(--stroke);
+      background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+    }
+
+    .panelHeader{
+      padding:14px 14px 10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .panelHeader h2{
+      margin:0;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing:.2px;
+    }
+    .panelHeader p{
+      margin:4px 0 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight:500;
+    }
+    .tag{
+      padding:8px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight:700;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.20);
+      color: var(--muted);
+      white-space:nowrap;
+      height:fit-content;
+    }
+
+    .panelBody{
+      padding:14px;
+      overflow:auto;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .emptyState{
+      border:1px dashed rgba(255,255,255,.20);
+      border-radius: 14px;
+      padding:14px;
+      background: rgba(0,0,0,.20);
+      color: var(--muted);
+      font-size: 13px;
+      line-height:1.55;
+    }
+
+    .card{
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      padding:12px;
+      background: rgba(0,0,0,.18);
+    }
+
+    .cardTitle{
+      font-size: 12px;
+      letter-spacing:.2px;
+      color: var(--muted);
+      font-weight:700;
+      margin:0 0 10px 0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+
+    .kv{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      padding:10px 10px 9px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .kv span:nth-child(1){
+      font-size: 11px;
+      color: var(--muted2);
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+    .kv span:nth-child(2){
+      font-size: 13px;
+      font-weight:700;
+      color: var(--text);
+      line-height:1.2;
+    }
+
+    .gauge{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .gaugeTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight:700;
+    }
+    .gaugeBar{
+      height:10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.08);
+      overflow:hidden;
+    }
+    .gaugeFill{
+      height:100%;
+      width:0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(255,71,87,.95), rgba(255,71,87,.20));
+      transition: width .35s ease;
+    }
+    .gaugeFill.orange{
+      background: linear-gradient(90deg, rgba(243,156,18,.95), rgba(243,156,18,.18));
+    }
+    .gaugeFill.green{
+      background: linear-gradient(90deg, rgba(46,204,113,.95), rgba(46,204,113,.18));
+    }
+
+
+
+    .bullets{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      margin:0;
+      padding-left: 18px;
+      color: var(--text);
+      font-size: 13px;
+      line-height:1.5;
+    }
+    .bullets li{
+      color: rgba(255,255,255,.85);
+    }
+    .bullets small{
+      color: var(--muted);
+      font-weight:600;
+    }
+
+    .mapboxgl-ctrl-bottom-right,
+    .mapboxgl-ctrl-bottom-left{ opacity:.92; }
+    .mapboxgl-popup-content{ color:#0b1020; font-family:'Poppins', sans-serif; }
+
+    @media (max-width: 1200px){
+      .kpis{ grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+      .content{ grid-template-columns: 1fr 380px; }
+    }
+    @media (max-width: 900px){
+      body{ overflow:auto; }
+      .app{ height:auto; overflow:visible; }
+      .content{
+        grid-template-columns: 1fr;
+        grid-template-rows: 520px auto;
+      }
+      .panel{ min-height: 520px; }
+    }
+
+
+/* KPI Color Variants */
+.kpiFill.green{
+  background: linear-gradient(90deg, rgba(46,204,113,.9), rgba(46,204,113,.25));
+}
+
+.kpiFill.red{
+  background: linear-gradient(90deg, rgba(255,99,132,.9), rgba(255,99,132,.25));
+}
+
+.kpiFill.yellow{
+  background: linear-gradient(90deg, rgba(241,196,15,.95), rgba(241,196,15,.30));
+}
+
+
+/* Patrol Warning Banner */
+.patrol-banner .mapboxgl-popup-content{
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.patrol-banner .mapboxgl-popup-tip{
+  display: none;
+}
+
+.patrol-banner-inner{
+  width: 150px;
+  text-align: center;
+  background: linear-gradient(135deg, #ff3b3b, #b30000);
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 8px;
+  border-radius: 10px;
+  letter-spacing: .4px;
+  box-shadow: 0 6px 20px rgba(255,0,0,.45);
+  border: 1px solid rgba(255,255,255,.25);
+}
+
+.tag.red {
+  background: linear-gradient(90deg, rgba(255,71,87,.95), rgba(255,71,87,.20));
+  color: white;
+  font-size: 12.5px;
+  font-weight: 800;
+  border: none;
+}
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <div class="header">
+      <div class="titleRow">
+        <div>
+          <h1 class="title">Simulation for Unified Operational Intelligence</h1>
+          <p class="subtitle">Real-time incident awareness, risk indicators, and AI recommendations across Dubai.</p>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi">
+          <div class="kpiLabel">Active Incidents</div>
+          <div class="kpiValue">3 <span class="kpiUnit">open</span></div>
+          <div class="kpiBar"><div class="kpiFill red" style="width:65%"></div></div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpiLabel">Avg. Response Time (SLA = 5 mins)</div>
+          <div class="kpiValue">2.5 <span class="kpiUnit">min</span></div>
+          <div class="kpiBar"><div class="kpiFill green" style="width:50%"></div></div>
+
+        </div>
+
+        <div class="kpi">
+          <div class="kpiLabel">High-risk Zones</div>
+          <div class="kpiValue">3 <span class="kpiUnit">zones</span></div>
+          <div class="kpiBar"><div class="kpiFill red" style="width:58%"></div></div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpiLabel">SLA Compliance %</div>
+          <div class="kpiValue">87<span class="kpiUnit">%</span></div>
+          <div class="kpiBar"><div class="kpiFill green" style="width:87%"></div></div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpiLabel">Workforce Utilization %</div>
+          <div class="kpiValue">55<span class="kpiUnit">%</span></div>
+          <div class="kpiBar"><div class="kpiFill yellow" style="width:55%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="mapWrap">
+        <div class="mapBadge">
+          <div class="icon">🛰️</div>
+          <div>
+            <p class="t1">Operational Map</p>
+            <p class="t2">Click a pulsing alert to view details</p>
+          </div>
+        </div>
+
+        <button class="recenter-btn" id="recenterBtn">Re-center</button>
+
+        <div id="map"></div>
+      </div>
+
+      <aside class="panel">
+        <div class="panelHeader">
+          <div>
+            <h2 id="panelTitle">Incident Details</h2>
+            <p id="panelSubtitle">Awaiting selection</p>
+          </div>
+          <div class="tag" id="panelTag">No area selected</div>
+        </div>
+
+        <div class="panelBody" id="panelBody">
+          <div class="emptyState">
+            <strong>👈 Please click an area on the map.</strong><br/>
+            You’ll see incident context, real-time risk indicators, and AI-generated recommendations here.
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    mapboxgl.accessToken = "pk.eyJ1IjoicmFlZGR3ZWlrIiwiYSI6ImNtMTZqZGtpeTBta2cydnM4NjBkenhsMG8ifQ.r3ufHWJMoGh_DCH3XDhDAg";
+
+    const SCENARIOS = [
+      {
+        id: "scenario-1",
+        name: "Incident #67582749",
+        tag: "Risk Priority #2",
+        lngLat: [55.405683, 25.266363],
+        googleLink: "https://maps.app.goo.gl/Sk9zbK39JC5m2G4K8",
+        location: "Al Qusais – Baghdad Street",
+        time: "24 Feb 2026 – 14:32",
+        severity: "Medium, 0 Casualties",
+        status: "Wave 1 en route with ETA 7 mins",
+        indicators: { escalation: 20, etaVolatility: 50, secondCollision: 30 },
+        recommendations: [
+          {
+  text: "Trigger SLA breach early-warning protocol",
+  impact: "improves inter-team coordination and reduces operational friction"
+},
+          { text: "Notify traffic police for lane management", impact: "reduces congestion delay" }
+        ]
+      },
+      {
+        id: "scenario-2",
+        name: "Incident #19285538",
+        tag: "Risk Priority #1",
+        lngLat: [55.088665, 24.988980],
+        googleLink: "https://maps.app.goo.gl/HgbfoRzCpSpcvgbR7",
+        location: "Jebel Ali – Expo Road",
+        time: "24 Feb 2026 – 18:07",
+        severity: "CRITICAL",
+        status: "Wave 2 en route with ETA 10 mins, Ambulance and Police on scene",
+        indicators: { escalation: 91, etaVolatility: 77, secondCollision: 83 },
+        recommendations: [
+          { text: "Reallocate nearest patrol unit to secure accident perimeter", impact: "" },
+          { text: "Pre-alert trauma center - shortens critical intervention window", impact: "" }
+        ]
+      },
+      {
+  id: "scenario-2b",
+  name: "Incident #37582759",
+  tag: "21060 - Chemical Leakage/Contamination",
+  lngLat: [55.11, 25.03],
+  googleLink: "https://maps.app.goo.gl/HgbfoRzCpSpcvgbR7",
+  location: "Jebel Ali – Expo Road",
+  time: "24 Feb 2026 – 18:07",
+  severity: "CRITICAL",
+  status: "Ambulance and Police with ETA 10 mins",
+  indicators: {
+    escalation: 91,
+    etaVolatility: 77,
+    secondCollision: 83
+  },
+  recommendations: [
+    {
+      text: "Reallocate nearest patrol unit to secure accident perimeter",
+      impact: ""
+    },
+    {
+      text: "Pre-alert trauma center - shortens critical intervention window",
+      impact: ""
+    }
+  ]
+},
+      {
+        id: "scenario-3",
+        name: "Patrolling Op #27624",
+        tag: "Understaffed",
+        lngLat: [55.385820, 25.227152],
+        googleLink: "https://maps.app.goo.gl/vm5KbJoQ6t3kVf9NA",
+        location: "Rashidiya Police Station Cluster",
+        time: "Evening Peak – 19:10",
+        severity: "-",
+        status: "Understaffed - SLA breach risk rising",
+        indicators: { areaRiskScore: 86, etaToHighRisk: 12, slaThreshold: 5, additionalPatrolNeeded: 3 },
+        recommendations: [
+          { text: "Deploy 4 additional patrol units to Rashidiya cluster", impact: "reduces SLA breach risk by 18%" },
+          { text: "Increase staffing during evening peak hours", impact: "prevents expected queue overflow" }
+        ]
+      }
+    ];
+
+    // MAP INIT (your new style + center)
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/raeddweik/cmm1dtmsg004e01qwat7lapj2",
+      center: [55.255903, 25.106061],
+      zoom: 9.8,
+      pitch: 40,
+      bearing: -12,
+      antialias: true
+    });
+
+    // HOME VIEW must match the initial map state
+    const HOME_VIEW = {
+      center: [55.255903, 25.106061],
+      zoom: 9.8,
+      bearing: -12,
+      pitch: 40
+    };
+
+    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "bottom-right");
+
+    // PULSING DOT
+    const pulsingDot = {
+      width: 160,
+      height: 160,
+      data: new Uint8Array(160 * 160 * 4),
+      onAdd: function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = this.width;
+        canvas.height = this.height;
+        this.context = canvas.getContext("2d", { willReadFrequently: true });
+      },
+      render: function () {
+        const duration = 1100;
+        const t = (performance.now() % duration) / duration;
+
+        const radius = (this.width / 2) * 0.22;
+        const outerRadius = (this.width / 2) * 0.60 * t + radius;
+
+        const ctx = this.context;
+        ctx.clearRect(0, 0, this.width, this.height);
+
+        ctx.beginPath();
+        ctx.arc(this.width / 2, this.height / 2, outerRadius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 71, 87, ${0.35 * (1 - t)})`;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(this.width / 2, this.height / 2, radius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 71, 87, 1)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+        ctx.lineWidth = 2 + 4 * (1 - t);
+        ctx.fill();
+        ctx.stroke();
+
+        this.data = ctx.getImageData(0, 0, this.width, this.height).data;
+        map.triggerRepaint();
+        return true;
+      }
+    };
+
+const pulsingDotGreen = {
+  width: 160,
+  height: 160,
+  data: new Uint8Array(160 * 160 * 4),
+  onAdd: function () {
+    const canvas = document.createElement("canvas");
+    canvas.width = this.width;
+    canvas.height = this.height;
+    this.context = canvas.getContext("2d", { willReadFrequently: true });
+  },
+  render: function () {
+    const duration = 1100;
+    const t = (performance.now() % duration) / duration;
+
+    const radius = (this.width / 2) * 0.22;
+    const outerRadius = (this.width / 2) * 0.60 * t + radius;
+
+    const ctx = this.context;
+    ctx.clearRect(0, 0, this.width, this.height);
+
+    // Outer glow
+    ctx.beginPath();
+    ctx.arc(this.width / 2, this.height / 2, outerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(46, 204, 113, ${0.35 * (1 - t)})`;
+    ctx.fill();
+
+    // Inner circle
+    ctx.beginPath();
+    ctx.arc(this.width / 2, this.height / 2, radius, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(46, 204, 113, 1)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.lineWidth = 2 + 4 * (1 - t);
+    ctx.fill();
+    ctx.stroke();
+
+    this.data = ctx.getImageData(0, 0, this.width, this.height).data;
+    map.triggerRepaint();
+    return true;
+  }
+};
+
+    // RIGHT PANEL
+    const panelTitle = document.getElementById("panelTitle");
+    const panelSubtitle = document.getElementById("panelSubtitle");
+    const panelTag = document.getElementById("panelTag");
+    const panelBody = document.getElementById("panelBody");
+let patrolBannerPopup = null;
+
+    function riskColorClass(value) {
+      if (value <= 40) return "green";
+      if (value <= 70) return "orange";
+      return "";
+    }
+
+    function setTag(text) {
+  panelTag.textContent = text;
+
+  panelTag.classList.remove("red");
+
+  if (text.includes("Risk Priority") || text === "Understaffed") {
+    panelTag.classList.add("red");
+  }
+}
+
+    function renderEmpty() {
+      panelTitle.textContent = "Incident Details";
+      panelSubtitle.textContent = "Awaiting selection";
+      setTag("No area selected");
+      panelBody.innerHTML = `
+        <div class="emptyState">
+          <strong>👈 Please click an area on the map.</strong><br/>
+          You’ll see incident context, real-time risk indicators, and AI-generated recommendations here.
+        </div>
+      `;
+    }
+
+    function renderScenario(s) {
+      panelTitle.textContent = "Selected Area";
+      panelSubtitle.textContent = s.name;
+      setTag(s.tag);
+
+      const isClassic = s.id === "scenario-1" || s.id === "scenario-2" || s.id === "scenario-2b";
+      const isOps = s.id === "scenario-3";
+
+      let indicatorsHtml = "";
+
+      if (isClassic) {
+        const e = s.indicators.escalation;
+        const v = s.indicators.etaVolatility;
+        const c = s.indicators.secondCollision;
+
+        indicatorsHtml = `
+          <div class="card">
+            <div class="cardTitle">
+              <span>Real-Time Risk Indicators</span>
+              <span style="color: rgba(255,255,255,.55); font-weight:700; font-size:11px;">gauges</span>
+            </div>
+
+            <div class="gauge">
+              <div class="gaugeTop"><span>Incident Escalation Risk</span><span>${e}%</span></div>
+              <div class="gaugeBar"><div class="gaugeFill ${riskColorClass(e)}" style="width:${e}%"></div></div>
+            </div>
+
+            <div style="height:10px"></div>
+
+            <div class="gauge">
+              <div class="gaugeTop"><span>SLA Breach Risk</span><span>${v}%</span></div>
+              <div class="gaugeBar"><div class="gaugeFill ${riskColorClass(v)}" style="width:${v}%"></div></div>
+            </div>
+
+            <div style="height:10px"></div>
+
+            <div class="gauge">
+              <div class="gaugeTop"><span>Secondary Collision Risk</span><span>${c}%</span></div>
+              <div class="gaugeBar"><div class="gaugeFill ${riskColorClass(c)}" style="width:${c}%"></div></div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (isOps) {
+        const risk = s.indicators.areaRiskScore;
+        const eta = s.indicators.etaToHighRisk;
+        const sla = s.indicators.slaThreshold;
+        const needed = s.indicators.additionalPatrolNeeded;
+
+        const etaPct = 100;
+        const etaClass = eta > sla ? "" : "green";
+
+        indicatorsHtml = `
+          <div class="card">
+            <div class="cardTitle">
+              <span>Operational Indicators</span>
+              <span style="color: rgba(255,255,255,.55); font-weight:700; font-size:11px;">ops</span>
+            </div>
+
+            <div class="row">
+		<div class="kpi">
+          <div class="kpiLabel">Area Risk Score %</div>
+          <div class="kpiValue">85<span class="kpiUnit">%</span></div>
+          <div class="kpiBar"><div class="kpiFill red" style="width:85%"></div></div>
+        </div>
+
+		<div class="kpi">
+          <div class="kpiLabel">Additional Patrol Cars Needed</div>
+          <div class="kpiValue">+3<span class="kpiUnit"></span></div>
+          <div class="kpiBar"><div class="kpiFill red" style="width:50%"></div></div>
+        </div>
+
+            </div>
+
+<br>
+            <div style="height:10px"></div>
+
+            <div class="gauge">
+              <div class="gaugeTop">
+                <span>ETA to High-Risk Streets</span>
+                <span>${eta} min ${eta > sla ? "🔴" : "🟢"}</span>
+              </div>
+              <div class="gaugeBar">
+                <div class="gaugeFill ${etaClass}" style="width:${etaPct}%"></div>
+              </div>
+              <div style="margin-top:6px; font-size:11px; color: rgba(255,255,255,.55); font-weight:700;">
+                SLA threshold: ${sla} mins
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      const recHtml = `
+        <div class="card">
+          <div class="cardTitle">
+            <span>AI-Generated Recommendations</span>
+            <span style="color: rgba(255,255,255,.55); font-weight:700; font-size:11px;">actions</span>
+          </div>
+          <ul class="bullets">
+            ${s.recommendations.map(r => `
+              <li>
+                <strong>${r.text}</strong>
+                ${r.impact ? `<br/><small>${r.impact}</small>` : ""}
+              </li>
+            `).join("")}
+          </ul>
+<div class="action-buttons">
+  <button class="action-btn take-action">Take Action</button>
+  <button class="action-btn dismiss">Dismiss</button>
+</div>
+        </div>
+      `;
+
+      panelBody.innerHTML = `
+        <div class="card">
+          <div class="cardTitle">
+            <span>Context</span>
+            <a href="${s.googleLink}" target="_blank" rel="noopener noreferrer"
+              style="color: rgba(124,92,255,.95); font-weight:800; font-size:11px; text-decoration:none;">
+              Open in Google Maps ↗
+            </a>
+          </div>
+
+    
+            <div class="kv">
+              <span>Location</span>
+              <span>${s.location}</span>
+            </div>
+
+
+          <div style="height:10px"></div>
+
+          <div class="row">
+            <div class="kv">
+              <span>Medical Severity</span>
+              <span>${s.severity}</span>
+            </div>
+            <div class="kv">
+              <span>Status</span>
+              <span>${s.status}</span>
+            </div>
+          </div>
+        </div>
+
+        ${indicatorsHtml}
+        ${recHtml}
+      `;
+    }
+
+    // Re-center button logic (visible only after dot click)
+    const recenterBtn = document.getElementById("recenterBtn");
+    function showRecenter(){ recenterBtn.classList.add("visible"); }
+    function hideRecenter(){ recenterBtn.classList.remove("visible"); }
+
+    recenterBtn.addEventListener("click", () => {
+      map.flyTo({
+        center: HOME_VIEW.center,
+        zoom: HOME_VIEW.zoom,
+        bearing: HOME_VIEW.bearing,
+        pitch: HOME_VIEW.pitch,
+        speed: 1.2,
+        curve: 1.4,
+        essential: true
+      });
+      renderEmpty();
+      hideRecenter();
+    });
+
+    // MAP LOAD: add alerts layer
+    map.on("load", () => {
+map.addImage("pulsing-dot-red", pulsingDot, { pixelRatio: 2 });
+map.addImage("pulsing-dot-green", pulsingDotGreen, { pixelRatio: 2 });
+
+
+      const geojson = {
+        type: "FeatureCollection",
+        features: SCENARIOS.map(s => ({
+          type: "Feature",
+          properties: { id: s.id, name: s.name, tag: s.tag },
+          geometry: { type: "Point", coordinates: s.lngLat }
+        }))
+      };
+
+      map.addSource("alerts", { type: "geojson", data: geojson });
+
+      map.addLayer({
+        id: "alerts-layer",
+        type: "symbol",
+        source: "alerts",
+        layout: {
+  "icon-image": [
+    "match",
+    ["get", "id"],
+    "scenario-3", "pulsing-dot-green",   // Patrolling Op #27624
+    "pulsing-dot-red"                    // all others
+  ],
+  "icon-allow-overlap": true
+}
+      });
+
+      map.on("mouseenter", "alerts-layer", () => map.getCanvas().style.cursor = "pointer");
+      map.on("mouseleave", "alerts-layer", () => map.getCanvas().style.cursor = "");
+
+      map.on("click", "alerts-layer", (e) => {
+        const feature = e.features && e.features[0];
+        if (!feature) return;
+
+        const selected = SCENARIOS.find(s => s.id === feature.properties.id);
+        if (!selected) return;
+
+        map.flyTo({
+          center: selected.lngLat,
+          zoom: Math.max(map.getZoom(), 12.6),
+          speed: 0.9,
+          curve: 1.25,
+          essential: true
+        });
+
+        renderScenario(selected);
+        showRecenter();
+
+// Remove existing banner if any
+if (patrolBannerPopup) {
+  patrolBannerPopup.remove();
+  patrolBannerPopup = null;
+}
+
+// Show banner ONLY for scenario-3
+if (selected.id === "scenario-3") {
+  patrolBannerPopup = new mapboxgl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: [0, -30], // positions above dot
+    className: "patrol-banner"
+  })
+  .setLngLat(selected.lngLat)
+  .setHTML(`
+    <div class="patrol-banner-inner">
+      Additional +3 Patrols Required
+    </div>
+  `)
+  .addTo(map);
+}
+      });
+
+      renderEmpty();
+      hideRecenter();
+    });
+
+    // Clicking blank map resets panel + hides button
+    map.on("click", (e) => {
+  const features = map.queryRenderedFeatures(e.point, { layers: ["alerts-layer"] });
+  if (!features.length) {
+    renderEmpty();
+    hideRecenter();
+
+    if (patrolBannerPopup) {
+      patrolBannerPopup.remove();
+      patrolBannerPopup = null;
+    }
+  }
+});
+  </script>
+</body>
+</html>

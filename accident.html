@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Incident Command Review</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+  --bg0:#070A12;
+  --bg1:#0B1020;
+  --stroke: rgba(255,255,255,.12);
+  --text: rgba(255,255,255,.92);
+  --muted: rgba(255,255,255,.65);
+  --shadow: 0 20px 60px rgba(0,0,0,.55);
+  --radius: 16px;
+
+  --green:#2ecc71;
+  --amber:#f39c12;
+  --red:#e74c3c;
+}
+
+*{ box-sizing:border-box; }
+
+.right-column .card:last-child,
+.left-column .card:last-child {
+  height: auto !important;
+}
+
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px;
+  font-size: 14px; /* bigger text */
+}
+
+.legend-color {
+  width: 20px;   /* bigger square */
+  height: 20px;  /* bigger square */
+  border-radius: 4px;
+}
+
+
+body{
+  margin:0;
+  font-family:'Poppins', sans-serif;
+  background:
+    radial-gradient(1200px 600px at 15% 10%, rgba(124,92,255,.22), transparent 60%),
+    radial-gradient(900px 600px at 85% 20%, rgba(46,204,113,.12), transparent 55%),
+    linear-gradient(180deg, var(--bg0), var(--bg1));
+  color:var(--text);
+  overflow-y:auto; /* enable vertical scroll */
+}
+
+.container{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  padding:14px;
+  min-height:100vh;
+}
+
+.card{
+  border-radius: var(--radius);
+  border:1px solid var(--stroke);
+  background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+  padding:14px;
+}
+
+.page-title{
+  font-size:20px;
+  font-weight:800;
+}
+
+/* KPI ROW */
+.kpi-row{
+  display:grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap:14px;
+}
+
+.kpi{
+  padding:12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+.kpi h4{
+  margin:0;
+  font-size:11px;
+  color:var(--muted);
+}
+
+.kpi p{
+  margin:4px 0 0;
+  font-weight:700;
+  font-size:14px;
+}
+
+.kpi-amber{ color: var(--amber); }
+.kpi-red{ color: var(--red); }
+
+/* MAIN GRID */
+.content-grid{
+  display:grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: 1fr 1fr;
+  gap:14px;
+}
+
+.left-column{
+  grid-column: span 3;
+  display:grid;
+  grid-template-rows: 1fr 1fr;
+  gap:14px;
+}
+
+.right-column{
+  grid-column: span 3;
+  display:grid;
+  grid-template-rows: 1fr 1fr;
+  gap:14px;
+}
+
+.left-column .card,
+.right-column .card{
+  /*height:100%;*/
+  overflow:hidden;
+}
+
+.image{
+  width:100%;
+  height:250px;
+  object-fit:cover;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+.timeline-box canvas{
+  height:80% !important;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:11px;
+}
+
+th, td{
+  padding:6px;
+  border:1px solid rgba(255,255,255,.12);
+  text-align:center;
+}
+
+th{
+  background:rgba(255,255,255,.08);
+  font-weight:600;
+}
+
+.green{ background:rgba(46,204,113,.8); }
+.amber{ background:rgba(243,156,18,.9); }
+.red{ background:rgba(231,76,60,.9); }
+
+ul{
+  padding-left:16px;
+  font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="card">
+<div class="page-title">
+Post-Incident Response Review - #67582749
+</div>
+</div>
+
+<div class="kpi-row">
+<div class="kpi"><h4>Initial Call Time</h4><p>27th Feb, 2025 10:30AM</p></div>
+<div class="kpi"><h4>Location</h4><p>Al Qusais, Baghdad Street</p></div>
+<div class="kpi"><h4>Incident Status</h4><p>Case Under Review</p></div>
+<div class="kpi"><h4>Medical Severity</h4><p class="kpi-amber">Medium</p></div>
+<div class="kpi"><h4>Workforce Deployed</h4><p class="kpi-amber">Wave 1 - 1 Police Officer, 2 Paramedics</p></div>
+<div class="kpi"><h4>Response Time</h4><p class="kpi-red">8.5 minutes</p></div>
+</div>
+
+<div class="content-grid">
+
+<div class="left-column">
+
+<div class="card">
+<h3>Linked VMS Camera : #C001</h3>
+<img src="Accident_image.jpg" class="image">
+</div>
+
+<div class="card timeline-box">
+<h3>Response Timeline Breakdown (Minutes)</h3>
+<canvas id="timeline"></canvas>
+</div>
+
+</div>
+
+<div class="right-column">
+
+<div class="card">
+<h3>AI Generated Accident Summary</h3>
+<ul>
+<li>Distress call received at 27th Feb, 2025 10:30AM from Al Qusais reporting a single-vehicle collision.</li>
+<li>Wave 1 response dispatched immediately, including 1 ambulance and 1 patrol unit.</li>
+<li>Total time to units on scene: 8.5 minutes.</li>
+<li>Medical assessment confirmed medium severity.</li>
+<li>Injured passengers stabilized and transferred to nearby standby hospital.</li>
+<li>Incident formally closed following scene clearance.</li>
+</ul>
+
+<h2 style="font-size:16px; margin-top:12px;">Note for Investigation - Case #123 Opened</h2>
+<table style="margin-top:8px; font-size:12px;">
+<tr><th>Issue</th><td>SLA Response Time Breach (170%)</td></tr>
+<tr><th>Primary Contributing Factor</th><td>Severe congestion during peak-hour traffic in the Al Qusais area</td></tr>
+<tr><th>Additional Factors to Investigate</th><td>Dispatch latency, resource availability, inter-team coordination</td></tr>
+<tr><th>Recommendation</th><td>Conduct further investigation to identify all contributors to the delay</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>Responder Activity & Performance</h3>
+<table>
+<tr>
+<th>Staff</th>
+<th>Start</th>
+<th>End</th>
+<th>Active (mins)</th>
+<th>Travel (mins)</th>
+<th>On-Scene (mins)</th>
+</tr>
+<tr>
+<td>Patrol Officer 1</td><td>10:30</td><td>11:00</td><td>30</td>
+<td class="red">12</td><td class="green">18</td>
+</tr>
+<tr>
+<td>Paramedic 1</td><td>10:31</td><td>11:05</td><td>34</td>
+<td class="amber">8.5</td><td class="green">25.5</td>
+</tr>
+<tr>
+<td>Paramedic 2</td><td>10:31</td><td>11:08</td><td>37</td>
+<td class="amber">8.5</td><td class="green">28.5</td>
+</tr>
+</table>
+
+<br>
+<br>
+<div class="legend" style="text-align:center; margin-top:12px;">
+  <span class="legend-item">
+    <span class="legend-color" style="background:rgba(46,204,113,.8);"></span>
+    On Track
+  </span>
+
+  <span class="legend-item">
+    <span class="legend-color" style="background:rgba(243,156,18,.9);"></span>
+    Minor Delay
+  </span>
+
+  <span class="legend-item">
+    <span class="legend-color" style="background:rgba(231,76,60,.9);"></span>
+    Critical Delay
+  </span>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+
+<script>
+// Steps in order up to Units On Scene
+const steps=[
+"Call Received",
+"Incident Verified",
+"Resource Assessment",
+"Units Dispatched",
+"Units En Route",
+"Units On Scene"
+];
+
+// Total 8.5 mins
+// Units Dispatched = 1 min (amber)
+// Units En Route = 5 min (red)
+// Remaining 2.5 mins distributed across first 6 tasks proportionally
+const durations = [
+  0.3,
+  0.7,
+  1.0,
+  1.0,
+  5.0,
+  0.5
+];
+
+// Compute Gantt cumulative positions
+let start = 0;
+const ganttData = durations.map(d=>{
+  const val=[start, start+d];
+  start += d;
+  return val;
+});
+
+// Colors
+const colors = steps.map(step=>{
+  if(step==="Units En Route") return "rgba(231,76,60,.9)"; // red
+  if(step==="Units Dispatched") return "rgba(243,156,18,.9)"; // amber
+  return "rgba(46,204,113,.8)"; // green
+});
+
+// Draw chart
+new Chart(document.getElementById("timeline"),{
+type:"bar",
+data:{
+  labels:steps,
+  datasets:[{
+    data:ganttData,
+    backgroundColor:colors,
+    borderRadius:4,
+    barPercentage:0.5,
+    categoryPercentage:0.6
+  }]
+},
+options:{
+  indexAxis:"y",
+  plugins:{legend:{display:false}},
+  scales:{
+    x:{
+      min:0,
+      max:9,
+      ticks:{
+        color:"#fff",
+        stepSize: 1,
+callback:value => value
+      },
+      grid:{color:"rgba(255,255,255,.1)"}
+    },
+    y:{
+      ticks:{color:"#fff"},
+      grid:{color:"rgba(255,255,255,.05)"}
+    }
+  }
+}
+});
+</script>
+
+</body>
+</html>

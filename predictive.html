@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Predictive Accident Forecasting & Intelligence</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg0: #070A12; --bg1: #0B1020;
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.65);
+      --muted2: rgba(255,255,255,.45);
+      --shadow: 0 12px 40px rgba(0,0,0,.5);
+      --radius: 14px;
+      --low:  rgba(46,204,113,.90);
+      --med:  rgba(243,156,18,.92);
+      --high: rgba(255,140,0,.95);
+      --crit: rgba(255,71,87,.95);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', system-ui, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 15% 10%, rgba(124,92,255,.22), transparent 60%),
+        radial-gradient(900px 600px at 85% 20%, rgba(46,204,113,.12), transparent 55%),
+        radial-gradient(900px 700px at 30% 85%, rgba(255,71,87,.10), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      background-attachment: fixed;
+      color: var(--text);
+      min-height: 100vh;
+      overflow-y: auto;
+    }
+
+    .app { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+
+    /* ── HEADER ── */
+    .header {
+      background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .titleRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .title    { font-size: 18px; font-weight: 800; letter-spacing: .2px; line-height: 1.2; }
+    .subtitle { font-size: 11px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .pill {
+      border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.22);
+      color: rgba(255,255,255,.9); padding: 6px 10px; border-radius: 999px;
+      font-weight: 700; font-size: 11px; display: flex; gap: 6px; align-items: center;
+    }
+    select, button {
+      font-family: 'Poppins', sans-serif;
+      border-radius: 10px; border: 1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.25); color: rgba(255,255,255,.92);
+      padding: 7px 10px; font-weight: 700; font-size: 11px;
+      cursor: pointer; outline: none;
+      transition: transform .15s, border-color .15s, background .15s;
+    }
+    select:hover, button:hover { transform: translateY(-1px); border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.18); }
+    button:active { transform: translateY(0); }
+
+    /* ── KPIs ── */
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .kpi {
+      border-radius: 12px; border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(135deg, rgba(255,255,255,.09), rgba(255,255,255,.03));
+      padding: 10px 12px 8px; backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.3);
+      position: relative; overflow: hidden;
+      transition: transform .15s, border-color .15s; cursor: pointer;
+    }
+    .kpi:hover { transform: translateY(-2px); border-color: rgba(124,92,255,.35); }
+    .kpi::before {
+      content:""; position:absolute; inset:-50px -30px auto auto;
+      width:120px; height:120px;
+      background: radial-gradient(circle at 30% 30%, rgba(124,92,255,.30), transparent 60%);
+      filter:blur(2px); transform:rotate(18deg); pointer-events:none;
+    }
+    .kpiLabel  { color:var(--muted); font-size:11px; font-weight:700; margin-bottom:5px; }
+    .kpiValue  { font-size:22px; font-weight:800; display:flex; align-items:baseline; gap:5px; }
+    .kpiUnit   { font-size:11px; color:var(--muted2); font-weight:700; }
+    .kpiMeta   { margin-top:5px; display:flex; align-items:center; gap:8px; }
+    .chip {
+      padding: 4px 8px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.18);
+      font-size: 10px; font-weight: 800; white-space: nowrap;
+    }
+    .chip.good { border-color:rgba(46,204,113,.32); background:rgba(46,204,113,.10); color:#2ecc71; }
+    .chip.bad  { border-color:rgba(255,71,87,.35);  background:rgba(255,71,87,.12);  color:#ff4757; }
+    .chip.warn { border-color:rgba(243,156,18,.35); background:rgba(243,156,18,.12); color:#f39c12; }
+    .kpiBar    { margin-top:8px; height:5px; border-radius:999px; background:rgba(255,255,255,.10); overflow:hidden; }
+    .kpiFill   { height:100%; border-radius:999px; background:linear-gradient(90deg,rgba(124,92,255,.85),rgba(124,92,255,.25)); width:0%; transition:width .45s ease; }
+
+    /* ── LAYOUT ── */
+    .row1 { 
+  display: grid;
+  grid-template-columns: 320px 1fr; /* ✅ left fixed, right flexible */
+  gap: 10px;
+}
+    .row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* ✅ 50% / 50% */
+  gap: 10px;
+}
+    .stack { display: flex; flex-direction: column; gap: 10px; }
+
+    /* ── PANEL ── */
+    .panel {
+      border-radius: var(--radius); border: 1px solid var(--stroke);
+      background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+      box-shadow: var(--shadow); backdrop-filter: blur(14px);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .panelHeader {
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+    }
+    .panelHeader h2 { font-size: 12px; font-weight: 800; letter-spacing: .2px; }
+    .panelHeader p  { font-size: 11px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+    .tag {
+      padding: 5px 9px; border-radius: 999px; font-size: 10px; font-weight: 800;
+      border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.20);
+      color: var(--muted); white-space: nowrap; flex-shrink: 0; height: fit-content;
+    }
+    .panelBody { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+    /* ── ALERT BOX ── */
+    .alertBox {
+      border: 1px solid rgba(255,71,87,.28);
+      background: linear-gradient(135deg, rgba(255,71,87,.12), rgba(0,0,0,.16));
+      border-radius: 12px; padding: 10px 12px;
+    }
+    .alertTop { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+    .alertLeft { display:flex; align-items:center; gap:8px; }
+    .alertIcon {
+      width:28px; height:28px; border-radius:9px;
+      display:grid; place-items:center; font-size:15px;
+      background:rgba(255,71,87,.18); border:1px solid rgba(255,71,87,.28); flex-shrink:0;
+    }
+    .alertHead  { font-size:12px; font-weight:900; }
+    .alertSub   { font-size:10px; color:rgba(255,255,255,.60); font-weight:700; }
+    .alertText  { font-size:12px; line-height:1.5; font-weight:700; color:rgba(255,255,255,.90); }
+    .hint {
+      font-size:10px; color:rgba(255,255,255,.50); font-weight:700; margin-top:7px;
+      display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;
+    }
+
+    /* ── CHARTS ── */
+    .chartWrap {
+      border-radius: 12px; border: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.14); padding: 8px; position:relative;
+    }
+    .chartWrap canvas { display:block; width:100% !important; }
+
+    /* ── HEATMAP ── */
+    .heatWrap {
+      border-radius: 12px; border: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.14); padding: 10px;
+    }
+    .heatTop {
+      display:flex; align-items:center; justify-content:space-between;
+      gap:8px; flex-wrap:wrap; margin-bottom:10px;
+    }
+    .heatTitle  { font-size:11px; font-weight:900; }
+    .heatSub    { font-size:10px; color:rgba(255,255,255,.50); font-weight:700; margin-top:1px; }
+    .heatLegend { display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:10px; font-weight:800; color:rgba(255,255,255,.75); }
+    .heatLegend span { display:flex; align-items:center; gap:4px; }
+    .dot { width:9px; height:9px; border-radius:999px; border:1px solid rgba(255,255,255,.20); display:inline-block; }
+    .dot.low  { background:var(--low); }
+    .dot.med  { background:var(--med); }
+    .dot.high { background:var(--high); }
+    .dot.crit { background:var(--crit); }
+
+    .heatGrid { display:grid; grid-template-columns:40px repeat(12,1fr); gap:4px; align-items:center; }
+    .heatRowLabel { font-size:10px; color:rgba(255,255,255,.70); font-weight:800; padding-left:2px; }
+    .heatCell {
+      height:16px; border-radius:5px; border:1px solid rgba(255,255,255,.07);
+      cursor:pointer; transition:transform .12s, border-color .12s, box-shadow .12s;
+    }
+    .heatCell:hover { transform:scale(1.08); border-color:rgba(124,92,255,.55); box-shadow:0 3px 10px rgba(0,0,0,.4); }
+
+    .axisRow { display:grid; grid-template-columns:40px repeat(12,1fr); gap:4px; margin-top:5px; }
+    .axisRow .tick { font-size:9px; color:rgba(255,255,255,.45); font-weight:800; text-align:center; }
+
+    /* ── TOOLTIP ── */
+    .tooltip {
+      position:fixed; pointer-events:none; z-index:9999;
+      opacity:0; transform:translateY(6px);
+      transition:opacity .10s, transform .10s;
+      padding:8px 11px; border-radius:10px;
+      background:rgba(10,14,28,.88); border:1px solid rgba(255,255,255,.16);
+      backdrop-filter:blur(12px); box-shadow:0 8px 28px rgba(0,0,0,.45);
+      color:rgba(255,255,255,.92); max-width:240px;
+    }
+    .tooltip.visible { opacity:1; transform:translateY(0); }
+    .tooltip .t1 { font-weight:900; font-size:11px; margin-bottom:2px; }
+    .tooltip .t2 { font-weight:700; font-size:11px; color:rgba(255,255,255,.70); }
+
+    @media (max-width:1050px) {
+      .kpis { grid-template-columns:repeat(2,1fr); }
+      .row1  { grid-template-columns:1fr; }
+      .row2  { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="titleRow">
+      <div>
+        <div class="title">Predictive Accident Forecasting &amp; Intelligence</div>
+        <div class="subtitle">City-wide risk outlook, early warnings, and explainable drivers for the next 24 hours.</div>
+      </div>
+      <div class="controls">
+        <div class="pill">🕒 <span id="nowLabel">Live</span></div>
+        <select id="areaSelect">
+          <option value="ALL" selected>All Areas</option>
+          <option value="Al Qusais">Al Qusais</option>
+          <option value="Al Rashidiyah">Al Rashidiyah</option>
+          <option value="Hor Al Anz">Hor Al Anz</option>
+          <option value="Airport Rd">Airport Rd</option>
+          <option value="Al Twar">Al Twar</option>
+          <option value="Muraqqabad">Muraqqabad</option>
+        </select>
+
+        <button id="resetBtn" type="button">Reset</button>
+      </div>
+    </div>
+
+<div class="kpis">
+
+  <div class="kpi" data-kpi="city">
+    <div class="kpiLabel">Overall City Risk Level</div>
+    <div class="kpiValue"><span id="kpiCity">72</span><span class="kpiUnit">%</span></div>
+    <div class="kpiMeta"><span class="chip bad" id="kpiCityChip">+14% from baseline</span></div>
+    <div class="kpiBar"><div class="kpiFill" id="barCity"></div></div>
+  </div>
+
+  <div class="kpi" data-kpi="streets">
+    <div class="kpiLabel">Critical Risk Streets</div>
+    <div class="kpiValue"><span id="kpiStreets">3</span></div>
+    <div class="kpiMeta"><span class="chip bad" id="kpiStreetsChip">Risk score &gt; 85%</span></div>
+    <div class="kpiBar"><div class="kpiFill" id="barStreets"></div></div>
+  </div>
+
+  <div class="kpi" data-kpi="expected">
+    <div class="kpiLabel">Accidents Expected (Next 1h)</div>
+    <div class="kpiValue"><span id="kpiExpected">4 fjfj </span></div>
+    <div class="kpiMeta"><span class="chip warn" id="kpiExpectedChip">Elevated</span></div>
+    <div class="kpiBar"><div class="kpiFill" id="barExpected"></div></div>
+  </div>
+
+  <div class="kpi" data-kpi="confidence">
+    <div class="kpiLabel">Model Confidence</div>
+    <div class="kpiValue"><span id="kpiConfidence">91</span><span class="kpiUnit">%</span></div>
+    <div class="kpiMeta"><span class="chip good" id="kpiConfidenceChip">Stable</span></div>
+    <div class="kpiBar"><div class="kpiFill" id="barConfidence"></div></div>
+  </div>
+
+</div>
+
+  <!-- ROW 1: ALERT + FORECAST -->
+  <div class="row1">
+    <section class="panel">
+      <div class="panelHeader">
+        <div>
+          <h2>Early Warning Alert</h2>
+          <p>Proactive notice based on short-horizon signals</p>
+        </div>
+        <div class="tag" id="alertTag">Next 1 hour</div>
+      </div>
+      <div class="panelBody">
+        <div class="alertBox">
+          <div class="alertTop">
+            <div class="alertLeft">
+              <div class="alertIcon">⚠️</div>
+              <div>
+                <div class="alertHead">High incident probability</div>
+              </div>
+            </div>
+            <span class="chip bad" id="alertSeverityChip">CRITICAL</span>
+          </div>
+          <div class="alertText" id="alertText">
+            High incident probability in the next 1 hour around <strong>Al Qusais</strong> area
+          </div>
+          <div class="hint">
+            <span>More Patrol Units required for coverag</span>
+           
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panelHeader">
+        <div>
+          <h2>Accident Prediction Forecast — <span id="forecastTitle">Next 24 Hours</span></h2>
+          <p>Predicted accidents by hour</p>
+        </div>
+        <div class="tag">Confidence band</div>
+      </div>
+      <div class="panelBody">
+        <div class="chartWrap">
+          <canvas id="forecastChart" height="150"></canvas>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ROW 2: HEATMAP + (TOP AREAS + FACTORS) -->
+  <div class="row2">
+    <section class="panel">
+      <div class="panelHeader">
+        <div>
+          <h2>Weekly High Risk Hours</h2>
+        </div>
+        <div class="tag" id="heatTag">Dubai (simulated)</div>
+      </div>
+      <div class="panelBody">
+        <div class="heatWrap">
+          <div class="heatTop">
+            <div>
+              <div class="heatTitle">Severity legend</div>
+              
+            </div>
+            <div class="heatLegend">
+              <span><i class="dot low"></i>Low</span>
+              <span><i class="dot med"></i>Medium</span>
+              <span><i class="dot high"></i>High</span>
+              <span><i class="dot crit"></i>Critical</span>
+            </div>
+          </div>
+          <div class="heatGrid" id="heatGrid"></div>
+          <div class="axisRow">
+            <div></div>
+            <div class="tick">00</div><div class="tick">02</div><div class="tick">04</div><div class="tick">06</div>
+            <div class="tick">08</div><div class="tick">10</div><div class="tick">12</div><div class="tick">14</div>
+            <div class="tick">16</div><div class="tick">18</div><div class="tick">20</div><div class="tick">22</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    
+     
+      <section class="panel">
+        <div class="panelHeader">
+          <div>
+            <h2>Top Factors Driving Accident Risk</h2>
+            <p>Model drivers (normalized importance)</p>
+          </div>
+          <div class="tag">Explainable AI</div>
+        </div>
+        <div class="panelBody">
+          <div class="chartWrap">
+            <canvas id="factorsChart" height="175"></canvas>
+          </div>
+        </div>
+      </section>
+    
+  </div>
+
+</div>
+
+<div class="tooltip" id="tooltip">
+  <p class="t1" id="tt1"></p>
+  <p class="t2" id="tt2"></p>
+</div>
+
+<script>
+  const KPI_BASE = {
+    confidence: { value:91, bar:91, chip:"Stable",             chipClass:"good" },
+    streets:    { value:3,  bar:60, chip:"Risk score > 85%",   chipClass:"bad"  },
+    expected:   { value:18, bar:72, chip:"Elevated",            chipClass:"warn" },
+    city:       { value:72, bar:72, chip:"+14% from baseline", chipClass:"bad"  }
+  };
+
+  const FORECAST_DATA = {
+  "24":{
+    labels:[
+      "08","09","10","11","12","13","14","15","16","17","18","19",
+      "20","21","22","23","00","01","02","03","04","05","06","07","08"
+    ],
+    predicted:[3,4,6,8,10,12,14,13,12,15,18,16,14,12,10,8,6,5,4,3,2,2,2,3,3],
+    lower:[2,3,4,6,8,10,11,10,10,12,15,13,12,10,8,6,5,4,3,2,2,1,1,2,2],
+    upper:[4,5,7,10,12,14,17,16,15,18,21,19,16,14,12,10,8,7,6,4,3,3,3,4,4]
+  }
+};
+
+  const TOP_AREAS=[{name:"Hor Al Anz",score:88},{name:"Airport Rd",score:85},{name:"Al Twar",score:82},{name:"Rashidiyah",score:74},{name:"Muraqqabad",score:70}];
+  const FACTORS=[{name:"Traffic Density",val:.82},{name:"School Let-Out",val:.65},{name:"Construction",val:.55},{name:"Past 7-Day Incidents",val:.48},{name:"Increased Fog",val:.40}];
+  const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const SLOTS=["00","02","04","06","08","10","12","14","16","18","20","22"];
+  const HEAT={Sun:[0,0,0,1,1,1,1,2,2,2,1,0],Mon:[0,0,1,1,2,2,1,2,3,3,2,1],Tue:[0,0,1,1,2,2,1,2,3,3,2,1],Wed:[0,0,1,1,2,2,1,2,3,3,2,1],Thu:[0,1,1,2,3,2,1,2,3,3,2,1],Fri:[0,1,1,2,3,2,1,2,3,3,2,1],Sat:[0,0,0,1,1,1,1,2,2,2,1,0]};
+  const LEVEL_META=[{name:"Low",color:"rgba(46,204,113,.90)",score:25},{name:"Medium",color:"rgba(243,156,18,.92)",score:50},{name:"High",color:"rgba(255,140,0,.95)",score:75},{name:"Critical",color:"rgba(255,71,87,.95)",score:92}];
+
+  const $=id=>document.getElementById(id);
+  function setNow(){const d=new Date(),p=n=>String(n).padStart(2,"0");$("nowLabel").textContent=`${p(d.getHours())}:${p(d.getMinutes())}`;}
+  setNow();setInterval(setNow,15000);
+  function showTip(x,y,t1,t2){$("tt1").textContent=t1;$("tt2").textContent=t2;const tt=$("tooltip");tt.style.left=(x+14)+"px";tt.style.top=(y+14)+"px";tt.classList.add("visible");}
+  function hideTip(){$("tooltip").classList.remove("visible");}
+  function setChip(el,text,cls){el.textContent=text;el.className="chip "+cls;}
+
+  function renderKPIs(k){
+    $("kpiConfidence").textContent=k.confidence.value;$("kpiStreets").textContent=k.streets.value;$("kpiExpected").textContent=k.expected.value;$("kpiCity").textContent=k.city.value;
+    setChip($("kpiConfidenceChip"),k.confidence.chip,k.confidence.chipClass);setChip($("kpiStreetsChip"),k.streets.chip,k.streets.chipClass);setChip($("kpiExpectedChip"),k.expected.chip,k.expected.chipClass);setChip($("kpiCityChip"),k.city.chip,k.city.chipClass);
+    requestAnimationFrame(()=>{$("barConfidence").style.width=k.confidence.bar+"%";$("barStreets").style.width=k.streets.bar+"%";$("barExpected").style.width=k.expected.bar+"%";$("barCity").style.width=k.city.bar+"%";});
+  }
+  const scenarioKPIs = JSON.parse(JSON.stringify(KPI_BASE));
+
+scenarioKPIs.confidence.value = 91;
+scenarioKPIs.streets.value = 5;
+scenarioKPIs.expected.value = 4;
+// ❌ leave city unchanged
+
+scenarioKPIs.confidence.bar = 88;
+scenarioKPIs.streets.bar = 80;
+scenarioKPIs.expected.bar = 22;
+
+renderKPIs(scenarioKPIs);
+
+  document.querySelectorAll(".kpi").forEach(card=>{
+    card.addEventListener("mouseenter",e=>showTip(e.clientX,e.clientY,"KPI Details",`${card.dataset.kpi.toUpperCase()} · value: ${KPI_BASE[card.dataset.kpi].value}`));
+    card.addEventListener("mousemove", e=>showTip(e.clientX,e.clientY,"KPI Details",`${card.dataset.kpi.toUpperCase()} · value: ${KPI_BASE[card.dataset.kpi].value}`));
+    card.addEventListener("mouseleave",hideTip);
+    card.addEventListener("click",()=>{
+      if(card.dataset.kpi==="confidence")$("kpiConfidenceChip").textContent="Stable (validated)";
+      if(card.dataset.kpi==="city")$("kpiCityChip").textContent="+14% from baseline (7d avg)";
+    });
+  });
+
+  Chart.defaults.color="rgba(255,255,255,.80)";
+  Chart.defaults.font.family="'Poppins',system-ui,sans-serif";
+  Chart.defaults.font.size=11;
+  Chart.defaults.plugins.legend.labels.boxWidth=10;
+  Chart.defaults.plugins.tooltip.backgroundColor="rgba(10,14,28,.92)";
+  Chart.defaults.plugins.tooltip.borderColor="rgba(255,255,255,.16)";
+  Chart.defaults.plugins.tooltip.borderWidth=1;
+  Chart.defaults.plugins.tooltip.titleFont={weight:"800",size:11};
+  Chart.defaults.plugins.tooltip.bodyFont={weight:"700",size:11};
+
+  let forecastChart;
+  function buildForecast(key){
+    const d=FORECAST_DATA[key];const ctx=$("forecastChart").getContext("2d");
+    const grad=ctx.createLinearGradient(0,0,0,200);grad.addColorStop(0,"rgba(255,71,87,.40)");grad.addColorStop(1,"rgba(255,71,87,.02)");
+    if(forecastChart)forecastChart.destroy();
+    forecastChart=new Chart(ctx,{type:"line",data:{labels:d.labels,datasets:[
+      {label:"Confidence",data:d.upper,borderColor:"rgba(0,0,0,0)",pointRadius:0,tension:.35,fill:{target:"-1"},backgroundColor:"rgba(255,255,255,.10)"},
+      {label:"Predicted Accidents",data:d.predicted,borderColor:"rgba(255,71,87,.95)",backgroundColor:grad,pointBackgroundColor:"rgba(255,71,87,.95)",pointBorderColor:"rgba(255,255,255,.85)",pointBorderWidth:2,pointRadius:4,pointHoverRadius:6,borderWidth:2.5,tension:.35,fill:true}
+    ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{position:"top",labels:{usePointStyle:true,pointStyle:"rectRounded",padding:10}},tooltip:{callbacks:{label:i=>{if(i.dataset.label==="Lower")return"";if(i.dataset.label==="Confidence")return"Confidence band";return`Predicted: ${i.formattedValue}`;}},filter:i=>i.dataset.label!=="Lower"}},
+      scales:{x:{grid:{color:"rgba(255,255,255,.07)"},ticks:{font:{weight:"800"}}},y:{beginAtZero:true,grid:{color:"rgba(255,255,255,.07)"},ticks:{font:{weight:"800"}}}}}});
+  }
+
+  let areasChart;
+  function buildAreas(){
+    const ctx=$("areasChart").getContext("2d");if(areasChart)areasChart.destroy();
+    areasChart=new Chart(ctx,{type:"bar",data:{labels:TOP_AREAS.map(d=>d.name),datasets:[{label:"Risk score",data:TOP_AREAS.map(d=>d.score),backgroundColor:"rgba(255,71,87,.85)",borderColor:"rgba(255,255,255,.10)",borderWidth:1,borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>`Risk score: ${i.formattedValue}%`}}},
+        scales:{x:{grid:{display:false},ticks:{font:{weight:"800"}}},y:{beginAtZero:true,max:100,grid:{color:"rgba(255,255,255,.07)"},ticks:{font:{weight:"800"},callback:v=>v+"%"}}},
+        onClick:(evt,els)=>{if(els.length)focusArea(TOP_AREAS[els[0].index].name);}}});
+  }
+
+  let factorsChart;
+  function buildFactors(){
+    const ctx=$("factorsChart").getContext("2d");if(factorsChart)factorsChart.destroy();
+    factorsChart=new Chart(ctx,{type:"bar",data:{labels:FACTORS.map(d=>d.name),datasets:[{label:"Importance",data:FACTORS.map(d=>d.val),backgroundColor:"rgba(56,143,255,.85)",borderColor:"rgba(255,255,255,.10)",borderWidth:1,borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>`Importance: ${Number(i.raw).toFixed(2)}`}}},
+        scales:{x:{grid:{display:false},ticks:{font:{weight:"800", size:9}, maxRotation:0}},y:{beginAtZero:true,max:1,grid:{color:"rgba(255,255,255,.07)"},ticks:{font:{weight:"800"}}}}}});
+  }
+
+  let dayProfile;
+  function buildDayProfile(day="Thu"){
+    const ctx=$("dayProfile").getContext("2d");if(dayProfile)dayProfile.destroy();
+    const levels=HEAT[day].map(l=>LEVEL_META[l].score);
+    dayProfile=new Chart(ctx,{type:"line",data:{labels:SLOTS.map(s=>`${s}:00`),datasets:[{label:`${day} risk profile`,data:levels,borderColor:"rgba(124,92,255,.95)",backgroundColor:"rgba(124,92,255,.14)",pointRadius:3,pointHoverRadius:5,borderWidth:2,tension:.35,fill:true}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:"rgba(255,255,255,.07)"},ticks:{font:{weight:"800"}}},y:{beginAtZero:true,max:100,grid:{color:"rgba(255,255,255,.07)"},ticks:{font:{weight:"800"}}}}}});
+  }
+
+  function renderHeatmap(){
+    const grid=$("heatGrid");grid.innerHTML="";
+    DAYS.forEach(day=>{
+      const lbl=document.createElement("div");lbl.className="heatRowLabel";lbl.textContent=day;grid.appendChild(lbl);
+      HEAT[day].forEach((lvl,idx)=>{
+        const cell=document.createElement("div");cell.className="heatCell";cell.style.background=LEVEL_META[lvl].color;
+        cell.dataset.day=day;cell.dataset.slot=SLOTS[idx];cell.dataset.level=lvl;
+        cell.addEventListener("mouseenter",e=>{const l=+cell.dataset.level;showTip(e.clientX,e.clientY,`${day} · ${cell.dataset.slot}:00`,`Severity: ${LEVEL_META[l].name} · Score: ${LEVEL_META[l].score}`);});
+        cell.addEventListener("mousemove", e=>{const l=+cell.dataset.level;showTip(e.clientX,e.clientY,`${day} · ${cell.dataset.slot}:00`,`Severity: ${LEVEL_META[l].name} · Score: ${LEVEL_META[l].score}`);});
+        cell.addEventListener("mouseleave",hideTip);
+        cell.addEventListener("click",()=>{$("heatTag").textContent=`Selected: ${day} ${cell.dataset.slot}:00`;buildDayProfile(day);});
+        grid.appendChild(cell);
+      });
+    });
+  }
+
+  function focusArea(areaName){
+    const map={"Rashidiyah":"Al Rashidiyah","Airport Rd":"Airport Rd","Hor Al Anz":"Hor Al Anz","Al Twar":"Al Twar","Muraqqabad":"Muraqqabad"};
+    const area=map[areaName]||areaName;
+    const sel=$("areaSelect");const opt=[...sel.options].find(o=>o.value===area||o.value===areaName);
+    if(opt)sel.value=opt.value;else sel.value="ALL";
+    if(areaName==="ALL"){
+      $("alertText").innerHTML=`High incident probability in the next 1 hour around <strong>Al Qusais</strong> and <strong>Al Rashidiyah</strong> areas`;
+      setChip($("alertSeverityChip"),"CRITICAL","bad");$("alertSignal").textContent="Signals: traffic density • peak hour • recent incidents";
+    } else {
+      $("alertText").innerHTML=`High incident probability in the next 1 hour around <strong>${area}</strong> area`;
+      setChip($("alertSeverityChip"),"HIGH","warn");$("alertSignal").textContent="Signals: local congestion • construction • recent incidents";
+    }
+    const k=JSON.parse(JSON.stringify(KPI_BASE));
+    if(areaName==="Al Qusais"){
+  k.city.value=78;
+  k.expected.value=22;
+  k.streets.value=5;
+  k.confidence.value=88;
+
+  $("alertText").innerHTML=`High incident probability in the next 1 hour around <strong>Al Qusais</strong> area — additional patrol units required for coverage`;
+
+} else if(areaName!=="ALL"){
+  k.city.value=Math.min(100,KPI_BASE.city.value+2);
+  k.expected.value=Math.min(60,KPI_BASE.expected.value+1);
+}
+   
+  }
+
+  renderHeatmap();buildForecast("24");buildFactors();buildDayProfile("Thu");
+
+ 
+  $("resetBtn").addEventListener("click",()=>{
+    $("areaSelect").value="ALL";$("heatTag").textContent="Dubai (simulated)";$("forecastTitle").textContent="Next 24 Hours";
+    
+  });
+  window.addEventListener("scroll",hideTip,{passive:true});
+</script>
+</body>
+</html>
